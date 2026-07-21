@@ -12,9 +12,15 @@ from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-import aiohttp
 import async_timeout
-from aiohttp import ClientSession, CookieJar
+from aiohttp import (
+    ClientError,
+    ClientResponse,
+    ClientResponseError,
+    ClientSession,
+    ClientTimeout,
+    CookieJar,
+)
 
 from ..const import (
     API_V1_URL,
@@ -179,7 +185,7 @@ class BrinkHomeCloud:
         url: str,
         *,
         json_data: dict[str, Any] | None = None,
-    ) -> aiohttp.ClientResponse:
+    ) -> ClientResponse:
         """Perform an authenticated v1.1 API request."""
         _LOGGER.debug(
             "Brink request %s %s timeout=%s",
@@ -195,7 +201,7 @@ class BrinkHomeCloud:
                     method,
                     url,
                     json=json_data,
-                    timeout=aiohttp.ClientTimeout(total=self._timeout),
+                    timeout=ClientTimeout(total=self._timeout),
                     headers={
                         "Authorization": f"Bearer {self._access_token}",
                         "Accept": "application/json",
@@ -215,12 +221,12 @@ class BrinkHomeCloud:
 
                 try:
                     response.raise_for_status()
-                except aiohttp.ClientResponseError:
+                except ClientResponseError:
                     await response.release()
                     raise
                 return response
 
-            except (aiohttp.ClientError, TimeoutError) as err:
+            except (ClientError, TimeoutError) as err:
                 if attempt < 2:
                     _LOGGER.debug(
                         "Brink request failed (%s/%s): %s %s (%s)",
@@ -440,7 +446,7 @@ class BrinkHomeCloud:
                 payload = await response.json()
                 _LOGGER.debug("Brink Flair refresh access token payload: %s", payload)
                 await response.release()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as ex:
+        except (ClientError, asyncio.TimeoutError) as ex:
             self._refresh_token = None
             raise BrinkAuthError("Refresh token request failed") from ex
 
@@ -489,7 +495,7 @@ class BrinkHomeCloud:
                 final_url = str(response.url)
                 await response.release()
                 return self._extract_code_from_redirect(final_url, expected_state)
-            except aiohttp.ClientError:
+            except ClientError:
                 return None
 
         return None
