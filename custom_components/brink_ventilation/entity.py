@@ -41,7 +41,7 @@ class BrinkHomeSystemEntity(CoordinatorEntity):
         device = self._device or {}
         return DeviceInfo(
             identifiers={(DOMAIN, str(self.system_id))},
-            name=self.device_name,
+            name=device.get("model", self.device_name), # use device model as device title in UI
             manufacturer=DEFAULT_NAME,
             model=device.get("model", DEFAULT_MODEL),
             serial_number=device.get("serial_number"),
