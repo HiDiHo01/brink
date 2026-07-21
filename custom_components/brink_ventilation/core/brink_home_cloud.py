@@ -130,12 +130,6 @@ class BrinkHomeCloud:
 
         return payload
 
-        parameters: dict[str, dict[str, Any]] = {}
-        self._extract_parameters(
-            (payload.get("root") or {}).get("navigationItems", []), parameters
-        )
-        return parameters
-
     async def get_device_data(self, system_id: int) -> dict[str, dict[str, Any]]:
         """Return a flattened parameter map for a system."""
         response = await self._api_request(
