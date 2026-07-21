@@ -17,18 +17,25 @@ import async_timeout
 
 from ..const import (
     API_V1_URL,
+    CONTROL_TYPE_LABELS,
     OIDC_AUTH_URL,
     OIDC_CLIENT_ID,
     OIDC_REDIRECT_URI,
     OIDC_SCOPE,
     OIDC_TOKEN_URL,
     PARAM_NAME_MAP,
+    PARAMETER_NAMES,
+    VALUE_STATE_LABELS,
     WRITE_VALUE_STATE,
 )
 from ..translations import TRANSLATIONS
 
 _LOGGER = logging.getLogger(__name__)
 _TRUSTED_HOST = "www.brink-home.com"
+
+
+class BrinkApiError(Exception):
+    """Brink API communication error."""
 
 
 class _InputFieldExtractor(HTMLParser):
@@ -59,11 +66,15 @@ class BrinkAuthError(Exception):
 class BrinkHomeCloud:
     """Interact with Brink Home through the v1.1 API."""
 
+    _OBSERVED_VALUE_STATES: set[int] = set()
+    _OBSERVED_CONTROL_TYPES: set[int] = set()
+    _OBSERVED_HINTS: set[int] = set()
+
     def __init__(self, session: aiohttp.ClientSession, username: str, password: str):
         self._session = session
         self._username = username
         self._password = password
-        self._timeout = 20
+        self._timeout = 30
         self._access_token: str | None = None
         self._token_expiry: float = 0.0
         self._refresh_token: str | None = None
@@ -86,6 +97,7 @@ class BrinkHomeCloud:
         response = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=5")
         try:
             payload = await response.json()
+            _LOGGER.debug("Brink Flair system payload: %s", payload)
         finally:
             await response.release()
 
@@ -104,6 +116,25 @@ class BrinkHomeCloud:
             )
         return systems
 
+    async def get_device(self, system_id: int) -> dict[str, dict[str, Any]]:
+        """Return a flattened parameter map for a system."""
+        response = await self._api_request(
+            "GET", f"{API_V1_URL}systems/{system_id}"
+        )
+        try:
+            payload = await response.json()
+            _LOGGER.debug("Brink Flair device payload: %s", payload)
+        finally:
+            await response.release()
+
+        return payload
+
+        parameters: dict[str, dict[str, Any]] = {}
+        self._extract_parameters(
+            (payload.get("root") or {}).get("navigationItems", []), parameters
+        )
+        return parameters
+
     async def get_device_data(self, system_id: int) -> dict[str, dict[str, Any]]:
         """Return a flattened parameter map for a system."""
         response = await self._api_request(
@@ -111,6 +142,7 @@ class BrinkHomeCloud:
         )
         try:
             payload = await response.json()
+            _LOGGER.debug("Brink Flair device_data payload: %s", payload)
         finally:
             await response.release()
 
@@ -134,11 +166,13 @@ class BrinkHomeCloud:
                 for value_id, value in params
             ]
         }
+        _LOGGER.debug("Brink Flair write payload: %s", payload)
         response = await self._api_request(
             "PUT",
             f"{API_V1_URL}systems/{system_id}/parameter-values",
             json_data=payload,
         )
+        _LOGGER.debug("Brink Flair device_data response: %s", response)
         try:
             await response.read()
         finally:
@@ -152,32 +186,71 @@ class BrinkHomeCloud:
         json_data: dict[str, Any] | None = None,
     ) -> aiohttp.ClientResponse:
         """Perform an authenticated v1.1 API request."""
-        for attempt in range(2):
+        _LOGGER.debug(
+            "Brink request %s %s timeout=%s",
+            method,
+            url,
+            self._timeout,
+        )
+        for attempt in range(3):
             await self._ensure_token()
-            async with async_timeout.timeout(self._timeout):
+
+            try:
                 response = await self._session.request(
                     method,
                     url,
                     json=json_data,
+                    timeout=aiohttp.ClientTimeout(total=self._timeout),
                     headers={
                         "Authorization": f"Bearer {self._access_token}",
                         "Accept": "application/json",
                     },
                 )
 
-            if response.status == 401 and attempt == 0:
-                await response.release()
-                async with self._token_lock:
-                    self._token_expiry = 0.0
-                    self._access_token = None
-                continue
+                if response.status == 401:
+                    await response.release()
 
-            if response.status == 401:
-                await response.release()
-                raise BrinkAuthError("Authentication failed after retry")
+                    if attempt == 0:
+                        async with self._token_lock:
+                            self._token_expiry = 0.0
+                            self._access_token = None
+                        continue
 
-            response.raise_for_status()
-            return response
+                    raise BrinkAuthError("Authentication failed after retry")
+
+                try:
+                    response.raise_for_status()
+                except aiohttp.ClientResponseError:
+                    await response.release()
+                    raise
+                return response
+
+            except (aiohttp.ClientError, TimeoutError) as err:
+                if attempt < 2:
+                    _LOGGER.debug(
+                        "Brink request failed (%s/%s): %s %s (%s)",
+                        attempt + 1,
+                        3,
+                        method,
+                        url,
+                        err,
+                    )
+                else:
+                    _LOGGER.warning(
+                        "Brink request failed (%s/%s): %s %s (%s)",
+                        attempt + 1,
+                        3,
+                        method,
+                        url,
+                        err,
+                    )
+
+                if attempt == 2:
+                    raise BrinkApiError(
+                        f"Brink request failed after 3 attempts: {method} {url}"
+                    ) from err
+
+                await asyncio.sleep(2)
 
         raise BrinkAuthError("Authentication failed before request")
 
@@ -332,6 +405,7 @@ class BrinkHomeCloud:
                     f"OIDC token exchange failed with status {response.status}"
                 )
             payload = await response.json()
+            _LOGGER.debug("Brink Flair code_for_tokens payload: %s", payload)
             await response.release()
 
         access_token = payload.get("access_token")
@@ -368,6 +442,7 @@ class BrinkHomeCloud:
                         f"Refresh token rejected (HTTP {response.status})"
                     )
                 payload = await response.json()
+                _LOGGER.debug("Brink Flair refresh access token payload: %s", payload)
                 await response.release()
         except (aiohttp.ClientError, asyncio.TimeoutError) as ex:
             self._refresh_token = None
@@ -429,16 +504,117 @@ class BrinkHomeCloud:
         parameters: dict[str, dict[str, Any]],
     ) -> None:
         """Flatten parameters from all navigation items into one map."""
+
         for nav_item in nav_items:
             for group in nav_item.get("parameterGroups", []):
                 for param in group.get("parameters", []):
                     raw_name = param.get("name", "")
+                    numeric_id = param.get("id")
+
                     key = PARAM_NAME_MAP.get(raw_name)
+
+                    if key is None and numeric_id is not None:
+                        key = PARAMETER_NAMES.get(numeric_id)
+
                     if key is None:
-                        numeric_id = param.get("id")
                         if numeric_id is None:
                             continue
                         key = f"unknown_{numeric_id}"
+
+                    if key.startswith("unknown_"):
+                        _LOGGER.info(
+                            "Unknown parameter id=%s name=%s value=%s",
+                            numeric_id,
+                            raw_name,
+                            param.get("value"),
+                        )
+
+                    list_items = param.get("listItems") or []
+
+                    options = (
+                        BrinkHomeCloud._extract_options(list_items)
+                        if list_items
+                        else []
+                    )
+
+                    if options:
+                        _LOGGER.debug(
+                            "Parameter %s (%s) current_value=%s options=%s read_write=%s "
+                            "min=%s max=%s step_width=%s decimals=%s "
+                            "nr_options=%s",
+                            key,
+                            numeric_id,
+                            param.get("value"),
+                            options,
+                            param.get("readWrite"),
+                            param.get("minValue"),
+                            param.get("maxValue"),
+                            param.get("stepWidth"),
+                            param.get("decimals"),
+                            len(options),
+                        )
+
+                    value_state = param.get("valueState")
+
+                    if value_state not in (None, 0):
+                        _LOGGER.info(
+                            "Parameter: %s (%s) valueState=%s value=%s",
+                            key,
+                            numeric_id,
+                            value_state,
+                            param.get("value"),
+                        )
+
+                    if isinstance(value_state, int):
+                        if value_state not in BrinkHomeCloud._OBSERVED_VALUE_STATES:
+                            BrinkHomeCloud._OBSERVED_VALUE_STATES.add(value_state)
+
+                            _LOGGER.info(
+                                "Discovered valueState=%s (%s) parameter=%s (%s)",
+                                value_state,
+                                VALUE_STATE_LABELS.get(value_state, "unknown"),
+                                key,
+                                numeric_id,
+                            )
+
+#                    if value_state != 0:
+#                        _LOGGER.info(
+#                            "Parameter !=0: %s (%s) value=%s valueState=%s readWrite=%s controlType=%s",
+#                            key,
+#                            numeric_id,
+#                            param.get("value"),
+#                            value_state,
+#                            param.get("readWrite"),
+#                            param.get("controlType"),
+#                        )
+
+                    control_type = param.get("controlType")
+
+                    if isinstance(control_type, int):
+                        if control_type not in BrinkHomeCloud._OBSERVED_CONTROL_TYPES:
+                            BrinkHomeCloud._OBSERVED_CONTROL_TYPES.add(control_type)
+
+                            _LOGGER.info(
+                                "Discovered controlType=%s (%s) parameter=%s (%s)",
+                                control_type,
+                                CONTROL_TYPE_LABELS.get(control_type, "unknown"),
+                                key,
+                                numeric_id,
+                            )
+
+                    hints = param.get("hints")
+
+                    if isinstance(hints, int):
+                        if hints not in BrinkHomeCloud._OBSERVED_HINTS:
+                            BrinkHomeCloud._OBSERVED_HINTS.add(hints)
+
+                            _LOGGER.info(
+                                "Discovered hints=%s parameter=%s (%s) controlType=%s",
+                                hints,
+                                key,
+                                numeric_id,
+                                param.get("controlType"),
+                            )
 
                     parameters[key] = {
                         "name": TRANSLATIONS.get(raw_name, raw_name),
@@ -448,17 +624,16 @@ class BrinkHomeCloud:
                         "value_state": param.get("valueState"),
                         "read_write": param.get("readWrite"),
                         "control_type": param.get("controlType"),
-                        "list_items": param.get("listItems"),
+                        "list_items": list_items,
                         "min_value": param.get("minValue"),
                         "max_value": param.get("maxValue"),
-                        "unit_of_measure": (
-                            param.get("unit") or param.get("unitOfMeasure")
-                        ),
+                        "default_value": param.get("defaultValue"),
+                        "step_width": param.get("stepWidth"),
+                        "decimals": param.get("decimals"),
+                        "unit_of_measure": param.get("unit"),
                         "component_id": param.get("componentId"),
-                        "numeric_id": param.get("id"),
-                        "options": BrinkHomeCloud._extract_options(
-                            param.get("listItems", [])
-                        ),
+                        "numeric_id": numeric_id,
+                        "options": options,
                     }
             BrinkHomeCloud._extract_parameters(
                 nav_item.get("navigationItems", []), parameters
@@ -486,6 +661,7 @@ class BrinkHomeCloud:
                     "label": TRANSLATIONS.get(label_source, label_source),
                 }
             )
+        # _LOGGER.debug("Brink Flair options: %s", options)
         return options
 
     @staticmethod

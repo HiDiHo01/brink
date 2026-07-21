@@ -30,5 +30,150 @@
         }
       }
     }
+  },
+  "entity": {
+    "select": {
+      "mode_input_1": {
+        "name": "Ingang 1 modus"
+      },
+      "mode_input_2": {
+        "name": "Ingang 2 modus"
+      },
+      "contact_1_supply_fan_action": {
+        "name": "Contact 1 toevoer fan actie"
+      },
+      "contact_1_exhaust_fan_action": {
+        "name": "Contact 1 afvoer fan actie"
+      },
+      "contact_1_type": {
+        "name": "Contact 1 type",
+        "state":{
+          "normally_open": "Normally open contact",
+          "normally_closed": "Normally closed contact"
+        }
+      },
+      "contact_2_type": {
+        "name": "Contact 2 type",
+        "state":{
+          "normally_open": "Normally open contact",
+          "normally_closed": "Normally closed contact"
+        }
+      },
+      "operating_mode": {
+        "name": "Ventilatiemodus",
+        "state": {
+          "automatic_mode": "Automatisch",
+          "manual": "Handmatig",
+          "holiday_mode": "Vakantie",
+          "party_mode": "Party",
+          "night_ventilation_mode": "Nachtventilatie"
+        }
+      },
+      "bypass_operation": {
+        "name": "Bypassbediening",
+        "state": {
+          "Auto mode": "Automatic mode",
+          "Bypass closed": "Bypass closed",
+          "Bypass open": "Bypass open"
+        }
+      },
+      "bypass_function": {
+        "name": "Bypassfunctie"
+      },
+      "mode_valve_24v_control": {
+        "name": "24V klepmodus"
+      },
+      "valve_control": {
+        "name": "Klepaansturing"
+      },
+      "signal_output_mode": {
+        "name": "Signaaluitgang modus"
+      }
+    },
+    "sensor": {
+      "supply_air_flow": {
+        "name": "Toevoerdebiet"
+      },
+      "exhaust_air_flow": {
+        "name": "Afvoerdebiet"
+      },
+      "fresh_air_temp": {
+        "name": "Buitenluchttemperatuur"
+      },
+      "exhaust_temp": {
+        "name": "Afvoerluchttemperatuur"
+      },
+      "supply_temp": {
+        "name": "Toevoerluchttemperatuur"
+      },
+      "humidity": {
+        "name": "Relatieve luchtvochtigheid"
+      },
+      "days_since_filter_reset": {
+        "name": "Days since filter reset"
+      },
+      "remaining_duration": {
+        "name": "Resterende duur"
+      },
+      "active_control_status": {
+        "name": "Active control status",
+        "state": {
+          "standby": "Standby",
+          "bootloader": "Bootloader",
+          "non_locking_fault": "Non-locking fault",
+          "blocking_error": "Blocking error",
+          "manual": "Manual",
+          "holiday": "Holiday",
+          "night_ventilation_mode": "Night ventilation mode",
+          "party": "Party",
+          "bypass_boost": "Bypass Boost",
+          "normal_boost": "Normal Boost",
+          "auto_co2": "Auto CO₂",
+          "auto_ebus": "Auto eBus",
+          "auto_modbus": "Auto Modbus",
+          "auto_lan_wlan_portal": "Auto LAN/WLAN Portal",
+          "auto_lan_wlan_local": "Auto LAN/WLAN Local"
+        }
+      },
+      "filter_status": {
+        "name": "Filter status",
+        "state": {
+          "not_dirty": "Not dirty",
+          "dirty": "Dirty"
+        }
+      },
+      "preheater_status": {
+        "name": "Status voorverwarmer"
+      },
+      "bypass_valve_status": {
+        "name": "Status bypassklep"
+      },
+      "co2_sensor_1": {
+        "name": "CO₂-sensor 1"
+      },
+      "co2_sensor_2": {
+        "name": "CO₂-sensor 2"
+      },
+      "co2_sensor_3": {
+        "name": "CO₂-sensor 3"
+      },
+      "co2_sensor_4": {
+        "name": "CO₂-sensor 4"
+      }
+    },
+    "binary_sensor": {
+      "rh_sensor_status": {
+        "name": "Humidity sensor"
+      },
+      "co2_sensor_status": {
+        "name": "CO₂ sensor"
+      },
+      "cn1_position": {
+        "name": "CN1 input"
+      },
+      "cn2_position": {
+        "name": "CN2 input"
+      }
+    }
   }
 }

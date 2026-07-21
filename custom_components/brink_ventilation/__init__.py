@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
 
 import aiohttp
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME, Platform
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    Platform,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
@@ -31,7 +35,7 @@ from .core.brink_home_cloud import BrinkAuthError, BrinkHomeCloud
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.SELECT, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.FAN]
+PLATFORMS = [Platform.SELECT, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.FAN, Platform.NUMBER]
 
 CONFIG_SCHEMA = cv.removed(DOMAIN, raise_if_present=False)
 
@@ -74,6 +78,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
+        config_entry=entry,
         name=DOMAIN,
         update_method=async_update_data,
         update_interval=timedelta(seconds=scan_interval),
@@ -99,15 +104,34 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, dict[str,
     """Fetch and normalize Brink systems plus the parameters this integration uses."""
     systems = await brink_client.get_systems()
 
+    _LOGGER.debug("Brink Flair systems: %s", systems)
+
+    # device = await brink_client.get_device(3074)
+
+    # _LOGGER.debug("Brink Flair device: %s", device)
+
+    # gateway_type_id = device.get("gatewayTypeId")
+    # is_online = device.get("isOnline")
+
+    # _LOGGER.debug("Brink Flair gateway_type_id: %s", gateway_type_id) # always 3 ?
+    # _LOGGER.debug("Brink Flair device is_online: %s", is_online)
+
     devices: dict[int, dict[str, Any]] = {}
     for system in systems:
         system_id = system["system_id"]
+        device = await brink_client.get_device(system_id)
+        _LOGGER.debug("Brink Flair device: %s", device)
+        gateway_type_id = device.get("gatewayTypeId")
+        is_online = device.get("isOnline")
         parameters = await brink_client.get_device_data(system_id)
+        _LOGGER.debug("Brink Flair device parameters: %s", parameters)
         devices[system_id] = {
             "system_id": system_id,
             "name": system.get("name") or DEFAULT_NAME,
             "serial_number": system.get("serial_number"),
             "gateway_state": system.get("gateway_state"),
+            "gateway_type_id": gateway_type_id,
+            "device_is_online": is_online,
             "model": parameters.get(PARAM_DEVICE_TYPE, {}).get("value") or DEFAULT_MODEL,
             "sw_version": parameters.get(PARAM_SOFTWARE_LABEL, {}).get("value"),
             "parameters": parameters,

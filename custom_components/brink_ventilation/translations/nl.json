@@ -1,0 +1,745 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Brink Home Ventilatie",
+        "description": "Meld u aan met uw Brink Home Portal-account.",
+        "data": {
+          "username": "Email",
+          "password": "Password"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Dit Brink Home account is al geconfigureerd.",
+      "reauth_successful": "Re-authentication was successful."
+    },
+    "error": {
+      "cannot_connect": "Kan niet verbinden. Probeer het later opnieuw.",
+      "invalid_auth": "Email of password is onjuist.",
+      "unknown": "Onbekende fout."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Brink Home-integratie configureren",
+        "description": "Werk het scaninterval bij om vaker gegevens op te halen.",
+        "data": {
+          "scan_interval": "Scaninterval (seconden)"
+        }
+      }
+    }
+  },
+  "entity_component": {
+    "fan": {
+      "preset_mode": {
+        "automatic": "Automatisch",
+        "manual": "Handmatig",
+        "holiday": "Vakantie",
+        "party": "Party",
+        "night_ventilation": "Nachtventilatie",
+        "Automatic mode": "Automatisch",
+        "Manual": "Handmatig",
+        "Holiday mode": "Vakantie",
+        "Party mode": "Party",
+        "Night ventilation mode": "Nachtventilatie"
+      }
+    }
+  },
+  "entity": {
+    "fan": {
+      "brink_ventilation": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "Automatic": "Automatisch",
+              "automatic": "Automatisch",
+              "manual": "Handmatig",
+              "holiday": "Vakantie",
+              "party": "Feest",
+              "night_ventilation": "Nachtventilatie"
+            }
+          }
+        }
+      },
+      "ventilation": {
+        "name": "Ventilatie"
+      },
+      "ventilation_level": {
+        "name": "Ventilatiestand",
+        "state": {
+          "Automatic": "Automatisch",
+          "automatic": "Automatisch",
+          "manual": "Handmatig",
+          "holiday": "Vakantie",
+          "party": "Feest",
+          "night_ventilation": "Nachtventilatie"
+        }
+      },
+      "ventilation_mode": {
+        "name": "Ventilatie modus",
+        "preset_mode": {
+          "state":{
+            "automatic": "Automatisch",
+            "Automatic": "Automatisch",
+            "manual": "Handmatig",
+            "holiday": "Vakantie",
+            "party": "Party",
+            "night_ventilation": "Nachtventilatie",
+            "Automatic mode": "Automatisch",
+            "Manual": "Handmatig",
+            "Holiday mode": "Vakantie",
+            "Party mode": "Party",
+            "Night ventilation mode": "Nachtventilatie"
+          },
+          "automatic": "Automatisch",
+          "Automatic": "Automatisch",
+          "manual": "Handmatig",
+          "holiday": "Vakantie",
+          "party": "Party",
+          "night_ventilation": "Nachtventilatie",
+          "Automatic mode": "Automatisch",
+          "Manual": "Handmatig",
+          "Holiday mode": "Vakantie",
+          "Party mode": "Party",
+          "Night ventilation mode": "Nachtventilatie"
+        },
+        "state":{
+          "automatic": "Automatisch",
+          "Automatic": "Automatisch",
+          "manual": "Handmatig",
+          "holiday": "Vakantie",
+          "party": "Party",
+          "night_ventilation": "Nachtventilatie",
+          "Automatic mode": "Automatisch",
+          "Manual": "Handmatig",
+          "Holiday mode": "Vakantie",
+          "Party mode": "Party",
+          "Night ventilation mode": "Nachtventilatie"
+        }
+      }
+    },
+    "select": {
+      "ventilation_level": {
+        "name": "Ventilatiestand",
+        "state": {
+          "Level 0": "Uit",
+          "Level 1": "Stand 1",
+          "Level 2": "Stand 2",
+          "Level 3": "Stand 3"
+        }
+      },
+      "mode_input_1": {
+        "name": "Modusingang 1",
+        "state": {
+          "0": "Uit",
+          "1": "Aan",
+          "off": "Uit",
+          "on": "Aan",
+          "Off": "Uit",
+          "On": "Aan"
+        }
+      },
+      "mode_input_2": {
+        "name": "Modusingang 2",
+        "state": {
+          "0": "Uit",
+          "1": "Aan",
+          "off": "Uit",
+          "on": "Aan",
+          "Off": "Uit",
+          "On": "Aan"
+        }
+      },
+      "contact_1_supply_fan_action": {
+        "name": "Contact 1 toevoer fan actie",
+        "state":{
+          "Fan off": "Ventilator uit",
+          "Fan runs at absolute minimum": "Ventilator op absoluut minimum",
+          "Fan at setting 0": "Ventilator op stand 0",
+          "Fan at setting 1": "Ventilator op stand 1",
+          "Fan at setting 2": "Ventilator op stand 2",
+          "Fan at setting 3": "Ventilator op stand 3",
+          "Fan at step 0": "Ventilator op stand 0",
+          "Fan according to multiple switch": "Ventilator volgens meerstandenschakelaar",
+          "Fan runs at absolute maximum": "Ventilator op absoluut maximum",
+          "No supply fan control": "Geen regeling afvoerventilator"
+        }
+      },
+      "contact_1_exhaust_fan_action": {
+        "name": "Contact 1 afvoer fan actie",
+        "state": {
+          "fan_off": "Ventilator uit",
+          "fan_absolute_minimum": "Ventilator op absoluut minimum",
+          "fan_setting_1": "Ventilator op stand 1",
+          "fan_setting_2": "Ventilator op stand 2",
+          "fan_setting_3": "Ventilator op stand 3",
+          "fan_setting_0": "Ventilator op stand 0",
+          "fan_multiple_switch": "Ventilator volgens meerstandenschakelaar",
+          "fan_absolute_maximum": "Ventilator op absoluut maximum",
+          "no_exhaust_fan_control": "Geen regeling afvoerventilator",
+          "Fan off": "Ventilator uit",
+          "Fan runs at absolute minimum": "Ventilator op absoluut minimum",
+          "Fan at setting 1": "Ventilator op stand 1",
+          "Fan at setting 2": "Ventilator op stand 2",
+          "Fan at setting 3": "Ventilator op stand 3",
+          "Fan at setting 0": "Ventilator op stand 0",
+          "Fan at step 0": "Ventilator op stand 0",
+          "Fan according to multiple switch": "Ventilator volgens meerstandenschakelaar",
+          "Fan runs at absolute maximum": "Ventilator op absoluut maximum",
+          "No exhaust fan control": "Geen regeling afvoerventilator"
+        }
+      },
+      "contact_1_type": {
+        "name": "Contact 1 type",
+        "state":{
+          "0": "Normaal open contact",
+          "1": "Normaal gesloten contact",
+          "make_contact": "Normaal open (NO)",
+          "break_contact": "Normaal gesloten (NC)",
+          "Normaly open contact": "Normaal open (NO)",
+          "NC contact (normally closed)": "Normaal gesloten (NC)"
+        }
+      },
+      "contact_2_supply_fan_action": {
+        "name": "Contact 2 toevoer fan actie",
+        "state":{
+          "Fan off": "Ventilator uit",
+          "Fan runs at absolute minimum": "Ventilator op absoluut minimum",
+          "Fan at setting 0": "Ventilator op stand 0",
+          "Fan at setting 1": "Ventilator op stand 1",
+          "Fan at setting 2": "Ventilator op stand 2",
+          "Fan at setting 3": "Ventilator op stand 3",
+          "Fan at step 0": "Ventilator op stand 0",
+          "Fan according to multiple switch": "Ventilator volgens meerstandenschakelaar",
+          "Fan runs at absolute maximum": "Ventilator op absoluut maximum",
+          "No supply fan control": "Geen regeling afvoerventilator"
+        }
+      },
+      "contact_2_exhaust_fan_action": {
+        "name": "Contact 2 afvoer fan actie",
+        "state": {
+          "fan_off": "Ventilator uit",
+          "fan_absolute_minimum": "Ventilator op absoluut minimum",
+          "fan_setting_1": "Ventilator op stand 1",
+          "fan_setting_2": "Ventilator op stand 2",
+          "fan_setting_3": "Ventilator op stand 3",
+          "fan_setting_0": "Ventilator op stand 0",
+          "fan_multiple_switch": "Ventilator volgens meerstandenschakelaar",
+          "fan_absolute_maximum": "Ventilator op absoluut maximum",
+          "no_exhaust_fan_control": "Geen regeling afvoerventilator",
+          "Fan off": "Ventilator uit",
+          "Fan runs at absolute minimum": "Ventilator op absoluut minimum",
+          "Fan at setting 1": "Ventilator op stand 1",
+          "Fan at setting 2": "Ventilator op stand 2",
+          "Fan at setting 3": "Ventilator op stand 3",
+          "Fan at setting 0": "Ventilator op stand 0",
+          "Fan according to multiple switch": "Ventilator volgens meerstandenschakelaar",
+          "Fan runs at absolute maximum": "Ventilator op absoluut maximum",
+          "No exhaust fan control": "Geen regeling afvoerventilator"
+        }
+      },
+      "contact_2_type": {
+        "name": "Contact 2 type",
+        "state":{
+          "0": "Normaal open contact",
+          "1": "Normaal gesloten contact",
+          "make_contact": "Normaal open (NO)",
+          "break_contact": "Normaal gesloten (NC)",
+          "Normaly open contact": "Normaal open (NO)",
+          "NC contact (normally closed)": "Normaal gesloten (NC)"
+        }
+      },
+      "cn1_conditions": {
+        "state": {
+          "0": "Alleen filtermelding",
+          "1": "Alleen storing",
+          "2": "Filtermelding en storing"
+        }
+      },
+      "cn2_conditions": {
+        "state": {
+          "0": "Alleen filtermelding",
+          "1": "Alleen storing",
+          "2": "Filtermelding en storing"
+        }
+      },
+      "operating_mode": {
+        "name": "Ventilatiemodus",
+        "state": {
+          "automatic_mode": "Automatisch",
+          "manual": "Handmatig",
+          "holiday_mode": "Vakantie",
+          "party_mode": "Party",
+          "night_ventilation_mode": "Nachtventilatie",
+          "Automatic mode": "Automatisch",
+          "Manual": "Handmatig",
+          "Holiday mode": "Vakantie",
+          "Party mode": "Feest",
+          "Night ventilation mode": "Nachtventilatie"
+        }
+      },
+      "bypass_operation": {
+        "name": "Bypassbediening",
+        "state": {
+          "0": "Automatisch",
+          "1": "Bypass gesloten",
+          "2": "Bypass geopend",
+          "Auto mode": "Automatisch",
+          "Bypass closed": "Bypass gesloten",
+          "Bypass open": "Bypass open"
+        }
+      },
+      "bypass_function": {
+        "name": "Bypassfunctie"
+      },
+      "mode_valve_24v_control": {
+        "name": "24V klepmodus",
+        "state": {
+          "Open": "Open",
+          "Closed": "Gesloten"
+        }
+      },
+      "valve_control": {
+        "name": "Klepaansturing",
+        "state": {
+          "relay_output_1": "Relaisuitgang 1",
+          "relay_output_2": "Relaisuitgang 2",
+          "analog_output_1": "Analoge uitgang 1",
+          "analog_output_2": "Analoge uitgang 2"
+        }
+      },
+      "signal_output_mode": {
+        "name": "Signaaluitgang modus",
+        "state": {
+          "off": "Uit",
+          "filter_condition_only": "Alleen filterconditie",
+          "fault_condition_only": "Alleen foutconditie",
+          "filter_and_fault_condition": "Filter- en foutconditie",
+          "Off":"Uit",
+          "'Off'":"Uit",
+          "Only filtercondition":"Alleen filtermelding",
+          "Only faultcondition":"Alleen storing",
+          "Filter and fault condition": "Filtermelding en storing"
+        }
+      },
+       "cn1_switch_input_condition": {
+        "name": "CN1 schakelingang conditie",
+        "state": {
+          "off": "Uit",
+          "on": "Aan",
+          "on_if_bypass_conditions_met": "Aan indien bypassvoorwaarden zijn vervuld",
+          "bypass_control": "Bypassregeling",
+          "bedroom_valve": "Slaapkamerklep"
+        }
+      },
+      "cn2_switch_input_condition": {
+        "name": "CN2 schakelingang conditie",
+        "state": {
+          "off": "Uit",
+          "on": "Aan",
+          "on_if_bypass_conditions_met": "Aan indien bypassvoorwaarden zijn vervuld",
+          "bypass_control": "Bypassregeling",
+          "bedroom_valve": "Slaapkamerklep"
+        }
+      },
+      "rh_sensor_sensitivity": {
+        "name": "Gevoeligheid vochtigheidssendor",
+        "state": {
+          "-2": "Laag",
+          "-1": "Lager dan normaal",
+          "0": "Normaal",
+          "1": "Hoger dan normaal",
+          "2": "Hoog",
+          "very_low": "Laag",
+          "low": "Lager dan normaal",
+          "normal": "Normaal",
+          "high": "Hoger dan normaal",
+          "very_high": "Hoog"
+        }
+      }
+    },
+    "number": {
+      "imbalance_fireplace": {
+        "name": "Onbalans open haard"
+      },
+      "ventilation_mode_0_airflow": {
+        "name": "Ventilatiestand 0"
+      },
+      "ventilation_mode_1_airflow": {
+        "name": "Ventilatiestand 1"
+      },
+      "ventilation_mode_2_airflow": {
+        "name": "Ventilatiestand 2"
+      },
+      "ventilation_mode_3_airflow": {
+        "name": "Ventilatiestand 3"
+      },
+      "bypass_hysteresis": {
+        "name": "Bypass hysterese"
+      },
+      "minimum_intake_temperature": {
+        "name": "Minimale inblaastemperatuur"
+      },
+      "days_until_filter_message": {
+        "name": "Dagen tot filtermelding"
+      },
+      "bypass_temperature": {
+        "name": "Bypasstemperatuur"
+      },
+      "switch_temp_1": {
+        "name": "Omschakeltemperatuur aardwarmtewisselaar 1"
+      },
+      "switch_temp_2": {
+        "name": "Omschakeltemperatuur aardwarmtewisselaar 2"
+      },
+      "v1_minimum_voltage": {
+        "name": "Minimale spanning klep 1"
+      },
+      "v2_minimum_voltage": {
+        "name": "Minimale spanning klep 2"
+      },
+      "v1_maximum_voltage": {
+        "name": "Maximale spanning klep 1"
+      },
+      "v2_maximum_voltage": {
+        "name": "Maximale spanning klep 2"
+      },
+      "rh_sensor_sensitivity": {
+        "name": "Gevoeligheid vochtigheidssendor",
+        "state": {
+          "-2": "Laag",
+          "-1": "Lager dan normaal",
+          "0": "Normaal",
+          "1": "Hoger dan normaal",
+          "2": "Hoog",
+          "very_low": "Laag",
+          "low": "Lager dan normaal",
+          "normal": "Normaal",
+          "high": "Hoger dan normaal",
+          "very_high": "Hoog"
+        }
+      },
+      "co2_sensor_1_min_ppm": {
+        "name": "eBus CO2 sensor 1 - min. ppm"
+      },
+      "co2_sensor_1_max_ppm": {
+        "name": "eBus CO2 sensor 1 - max. ppm"
+      },
+      "co2_sensor_2_min_ppm": {
+        "name": "eBus CO2 sensor 2 - min. ppm"
+      },
+      "co2_sensor_2_max_ppm": {
+        "name": "eBus CO2 sensor 2 - max. ppm"
+      },
+      "co2_sensor_3_min_ppm": {
+        "name": "eBus CO2 sensor 3 - min. ppm"
+      },
+      "co2_sensor_3_max_ppm": {
+        "name": "eBus CO2 sensor 3 - max. ppm"
+      },
+      "co2_sensor_4_min_ppm": {
+        "name": "eBus CO2 sensor 4 - min. ppm"
+      },
+      "co2_sensor_4_max_ppm": {
+        "name": "eBus CO2 sensor 4 - max. ppm"
+      }
+    },
+    "sensor": {
+      "additional_temperature_sensor":{
+        "name": "Extra temperatuur sensor"
+      },
+      "preheater_power":{
+        "name": "Vermogen voorverwarmer"
+      },
+      "ventilation_level": {
+        "name": "Ventilatiestand"
+      },
+      "ventilation_mode_0_airflow": {
+        "name": "Ventilatiestand 0"
+      },
+      "ventilation_mode_1_airflow": {
+        "name": "Ventilatiestand 1"
+      },
+      "ventilation_mode_2_airflow": {
+        "name": "Ventilatiestand 2"
+      },
+      "ventilation_mode_3_airflow": {
+        "name": "Ventilatiestand 3"
+      },
+      "ventilation_percentage": {
+        "name": "Ventilatie"
+      },
+      "filter_message": {
+        "name": "Filtermelding",
+        "state": {
+          "0": "Geen filtermelding",
+          "1": "Filter heeft aandacht nodig",
+          "No active filter message": "Geen filtermelding",
+          "Filter needs attention": "Filter heeft aandacht nodig",
+          "Not dirty": "Geen filtermelding",
+          "Dirty": "Filter heeft aandacht nodig"
+        }
+      },
+      "days_until_filter_message": {
+        "name": "Dagen tot filtermelding"
+      },
+      "bypass_temperature": {
+        "name": "Bypasstemperatuur"
+      },
+      "supply_air_flow_setpoint": {
+        "name": "Toevoerdebiet setpoint"
+      },
+      "actual_supply_air_flow": {
+        "name": "Toevoerdebiet"
+      },
+      "supply_air_pressure": {
+        "name": "Toevoerluchtdruk"
+      },
+      "exhaust_air_flow_setpoint": {
+        "name": "Afvoerdebiet setpoint"
+      },
+      "actual_exhaust_air_flow": {
+        "name": "Afvoerdebiet"
+      },
+      "exhaust_air_pressure": {
+        "name": "Afvoerluchtdruk"
+      },
+      "fresh_air_temp": {
+        "name": "Temperatuur van buiten"
+      },
+      "exhaust_temp": {
+        "name": "Afvoerluchttemperatuur"
+      },
+      "supply_temp": {
+        "name": "Temperatuur naar woning"
+      },
+      "humidity": {
+        "name": "Relatieve luchtvochtigheid"
+      },
+      "days_since_filter_reset": {
+        "name": "Dagen sinds filterreset"
+      },
+      "remaining_duration": {
+        "name": "Resterende looptijd bedrijfsmodus"
+      },
+      "active_control_status": {
+        "name": "Status actieve regeling",
+        "state": {
+          "0": "Stand-by",
+          "1": "Bootloader",
+          "2": "Niet-blokkerende storing",
+          "3": "Blokkerende storing",
+          "4": "Handmatig",
+          "5": "Vakantie",
+          "6": "Nachtventilatie",
+          "7": "Party",
+          "8": "Bypass boost",
+          "9": "Normale boost",
+          "10": "Auto CO₂",
+          "11": "Auto eBus",
+          "12": "Auto Modbus",
+          "13": "Auto LAN/WLAN-portaal",
+          "14": "Auto LAN/WLAN lokaal",
+          "standby": "Stand-by",
+          "bootloader": "Bootloader",
+          "non_locking_fault": "Niet-blokkerende storing",
+          "blocking_fault": "Blokkerende storing",
+          "blocking_error": "Blokkerende storing",
+          "manual": "Handmatig",
+          "holiday": "Vakantie",
+          "night_ventilation_mode": "Nachtventilatie",
+          "party": "Party",
+          "bypass_boost": "Bypass boost",
+          "normal_boost": "Normale boost",
+          "auto_co2": "Automatisch CO₂",
+          "auto_ebus": "Automatisch eBus",
+          "auto_modbus": "Automatisch Modbus",
+          "auto_lan_wlan_portal": "Automatisch LAN/WLAN-portaal",
+          "auto_lan_wlan_local": "Automatisch LAN/WLAN lokaal"
+        }
+      },
+      "filter_status": {
+        "name": "Filterstatus",
+        "state": {
+          "0": "Filter schoon",
+          "1": "Filter vervangen",
+          "not_dirty": "Schoon",
+          "dirty": "Vervuild"
+        }
+      },
+      "preheater_status": {
+        "name": "Status voorverwarmer",
+        "state": {
+          "off": "Uit",
+          "auto": "Automatisch",
+          "lock_current": "Huidige stand vergrendeld",
+          "lock_maximum": "Maximum vergrendeld"
+        }
+      },
+      "bypass_valve_status": {
+        "name": "Status bypassklep",
+        "state": {
+          "Initialisation": "Initialisatie",
+          "Opens": "Openen",
+          "Open": "Open",
+          "Closed": "Gesloten",
+          "initialization":  "Initialisatie",
+          "opening": "Openen",
+          "closing": "Sluiten",
+          "open": "Open",
+          "closed": "Gesloten"
+        }
+      },
+      "co2_sensor_1": {
+        "name": "CO₂-sensor 1"
+      },
+      "co2_sensor_2": {
+        "name": "CO₂-sensor 2"
+      },
+      "co2_sensor_3": {
+        "name": "CO₂-sensor 3"
+      },
+      "co2_sensor_4": {
+        "name": "CO₂-sensor 4"
+      },
+      "status_geothermal_heat_exchanger": {
+        "name": "Geothermische warmtewisselaar status",
+        "state": {
+          "0": "Laag geopend",
+          "1": "Gesloten",
+          "3": "Hoog geopend",
+          "open_low": "Laag geopend",
+          "closed": "Gesloten",
+          "open_high": "Hoog geopend"
+        }
+      },
+      "frost_protection_status": {
+        "name": "Vorstbeveiliging status",
+        "state": {
+          "0": "Niet geïnitialiseerd",
+          "1": "Opstartvertraging",
+          "2": "Geen vorst",
+          "3": "Geen vorst vertraging",
+          "4": "Startvertraging vorstregeling",
+          "5": "Wachten op ijsvorming",
+          "6": "Vertraging ijs gedetecteerd",
+          "7": "Verwarming actief",
+          "8": "Wachten op vrije verwarming",
+          "9": "Startvertraging ventilatorregeling",
+          "10": "Wachten ventilatorregeling",
+          "11": "Ventilatorregeling",
+          "12": "Uitschakelvertraging ventilator",
+          "13": "Ventilator uit",
+          "14": "Ventilator herstart",
+          "15": "Fout",
+          "16": "Periodieke batterijtest",
+          "unknown": "Onbekend",
+          "not_initialized": "Niet geïnitialiseerd",
+          "power_up_delay": "Opstartvertraging",
+          "no_frost": "Geen vorst",
+          "no_frost_delay": "Vertraging geen vorst",
+          "frost_control_start_delay": "Startvertraging vorstbeveiliging",
+          "wait_for_icing": "Wachten op ijsvorming",
+          "ice_detected_delay": "Vertraging na ijsdetectie",
+          "heating": "Verwarmen",
+          "wait_for_free_heater": "Wachten op vrijgave verwarming",
+          "fan_control_start_delay": "Startvertraging ventilatorregeling",
+          "fan_control_wait": "Wachten op ventilatorregeling",
+          "fan_control": "Ventilatorregeling actief",
+          "fan_off_delay": "Uitschakelvertraging ventilator",
+          "fan_off": "Ventilator uit",
+          "fan_restarting": "Ventilator herstarten",
+          "error": "Fout",
+          "periodic_coil_test": "Periodieke warmtewisselaartest",
+          "start_delay": "Opstartvertraging",
+          "wait_for_ice": "Wachten op ijsvorming",
+          "wait_for_fan_control": "Wachten op ventilatorregeling",
+          "fan_restart": "Herstart ventilator",
+          "water_block_test": "Waterbloktest"
+        }
+      },
+      "gateway_state": {
+        "name": "Gateway state",
+        "state": {
+          "locked": "Op slot",
+          "offline": "Offline",
+          "online": "Online"
+        }
+      }
+    },
+    "binary_sensor": {
+      "gateway_status": {
+        "name": "Gateway status",
+        "state": {
+          "off": "Offline",
+          "on": "Online"
+        }
+      },
+      "device_online": {
+        "name": "Device status",
+        "state": {
+          "off": "Offline",
+          "on": "Online"
+        }
+      },
+      "ebus_co2_sensor_status": {
+        "name": "eBus CO₂-sensor",
+        "state": {
+          "off": "Niet actief",
+          "on": "Actief"
+        }
+      },
+      "status_filter_message": {
+        "name": "Status filtermelding",
+        "state": {
+          "off": "Geen filtermelding",
+          "on": "Filter heeft aandacht nodig"
+        }
+      },
+      "rh_sensor_status": {
+        "name": "Vochtigheidssensor",
+        "state": {
+          "off": "Niet actief",
+          "on": "Actief"
+        }
+      },
+      "co2_sensor_status": {
+        "name": "CO₂-sensor",
+        "state": {
+          "off": "Niet actief",
+          "on": "Actief"
+        }
+      },
+      "cn1_position": {
+        "name": "CN1 ingang",
+        "state": {
+          "off": "Gesloten",
+          "on": "Open"
+        }
+      },
+      "cn2_position": {
+        "name": "CN2 ingang",
+        "state": {
+          "off": "Gesloten",
+          "on": "Open"
+        }
+      },
+      "cn1_switch_input": {
+        "name": "CN1 schakelaar input",
+        "state": {
+          "off": "Dicht",
+          "on": "Open"
+        }
+      },
+      "cn2_switch_input": {
+        "name": "CN2 schakelaar input",
+        "state": {
+          "off": "Dicht",
+          "on": "Open"
+        }
+      }
+    }
+  }
+}
