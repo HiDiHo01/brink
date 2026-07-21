@@ -5,7 +5,7 @@
   "config_flow": true,
   "dependencies": ["http"],
   "documentation": "https://github.com/samuolis/brink/blob/master/README.md",
-  "integration_type": "hub",
+  "integration_type": "device",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/samuolis/brink/issues",
   "version": "1.0.2"
