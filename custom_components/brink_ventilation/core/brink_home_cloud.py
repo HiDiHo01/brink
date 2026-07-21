@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 import async_timeout
+from aiohttp import ClientSession, CookieJar
 
 from ..const import (
     API_V1_URL,
@@ -70,7 +71,7 @@ class BrinkHomeCloud:
     _OBSERVED_CONTROL_TYPES: set[int] = set()
     _OBSERVED_HINTS: set[int] = set()
 
-    def __init__(self, session: aiohttp.ClientSession, username: str, password: str):
+    def __init__(self, session: ClientSession, username: str, password: str):
         self._session = session
         self._username = username
         self._password = password
@@ -279,8 +280,9 @@ class BrinkHomeCloud:
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
 
-        jar = aiohttp.CookieJar(unsafe=False)
-        async with aiohttp.ClientSession(cookie_jar=jar) as oidc_session:
+        jar = CookieJar(unsafe=False)
+        # jar = aiohttp.CookieJar(unsafe=False)
+        async with ClientSession(cookie_jar=jar) as oidc_session:
             login_url, csrf_token, return_url = await self._fetch_login_page(
                 oidc_session, code_challenge, state, nonce
             )
@@ -292,7 +294,7 @@ class BrinkHomeCloud:
 
     async def _fetch_login_page(
         self,
-        session: aiohttp.ClientSession,
+        session: ClientSession,
         code_challenge: str,
         state: str,
         nonce: str,
@@ -334,7 +336,7 @@ class BrinkHomeCloud:
 
     async def _submit_login_credentials(
         self,
-        session: aiohttp.ClientSession,
+        session: ClientSession,
         login_url: str,
         csrf_token: str,
         return_url: str | None,
@@ -460,7 +462,7 @@ class BrinkHomeCloud:
 
     async def _follow_redirects_for_code(
         self,
-        session: aiohttp.ClientSession,
+        session: ClientSession,
         redirect_url: str,
         base_url: str,
         expected_state: str,
