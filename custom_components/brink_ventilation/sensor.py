@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
+    REVOLUTIONS_PER_MINUTE,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
@@ -25,12 +26,13 @@ from homeassistant.core import HomeAssistant
 from .const import (
     ACTIVE_CONTROL_STATUS_LABELS,
     BYPASS_VALVE_STATUS_LABELS,
+    CONTROL_TYPE_MAP,
     DATA_CLIENT,
     DATA_COORDINATOR,
     DOMAIN,
     FILTER_STATUS_LABELS,
     FROST_PROTECTION_STATUS_LABELS,
-    GATEWAY_STATE_LABELS_STR,
+    GATEWAY_STATE_LABELS,
     GEOTHERMAL_HEAT_EXCHANGER_LABELS,
     PARAM_ACTIVE_CONTROL_STATUS,
     PARAM_ACTUAL_SUPPLY_AIR_FLOW,
@@ -63,11 +65,13 @@ from .const import (
     PARAM_VENTILATION_MODE_2,
     PARAM_VENTILATION_MODE_3,
     PREHEATER_STATUS_LABELS,
+    READ_WRITE_MAP,
+    VALUE_STATE_MAP,
+    VENTILATION_LEVEL_LABELS,
 )
 from .entity import BrinkHomeDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
-REVOLUTIONS_PER_MINUTE = "rpm"
 
 
 @dataclass(frozen=True)
@@ -78,7 +82,7 @@ class BrinkSensorDescription(SensorEntityDescription):
     is_enum: bool = False
     is_device_attribute: bool = False
     required_value_state: int | None = None
-    value_map: dict[str, str] | None = None
+    value_map: dict[int, str] | None = None
     enabled_value_state: int | None = None
     _attr_has_entity_name = True
 
@@ -89,6 +93,9 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         translation_key="ventilation_level",
         parameter_key="ventilation_level",
         icon="mdi:fan",
+        device_class=SensorDeviceClass.ENUM,
+        is_enum=True,
+        value_map=VENTILATION_LEVEL_LABELS
     ),
     BrinkSensorDescription(
         key=PARAM_SUPPLY_AIR_FLOW,
@@ -97,6 +104,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         icon="mdi:fan-chevron-up",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE
     ),
     BrinkSensorDescription(
         key=PARAM_ACTUAL_SUPPLY_AIR_FLOW,
@@ -105,6 +113,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         icon="mdi:fan-chevron-up",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE
     ),
     BrinkSensorDescription(
         key=PARAM_EXHAUST_AIR_FLOW,
@@ -113,6 +122,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         icon="mdi:fan-chevron-down",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE
     ),
     BrinkSensorDescription(
         key=PARAM_NOMINAL_SUPPLY_AIR_FLOW,
@@ -121,6 +131,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         icon="mdi:fan-chevron-up",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE
     ),
     BrinkSensorDescription(
         key=PARAM_NOMINAL_EXHAUST_AIR_FLOW,
@@ -129,6 +140,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         icon="mdi:fan-chevron-down",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE
     ),
     BrinkSensorDescription(
         key=PARAM_FRESH_AIR_TEMP,
@@ -228,7 +240,6 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         icon="mdi:timer-sand",
         native_unit_of_measurement=UnitOfTime.MINUTES,
         state_class=SensorStateClass.MEASUREMENT,
-        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BrinkSensorDescription(
         key=PARAM_ACTIVE_CONTROL_STATUS,
@@ -257,7 +268,6 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key=PARAM_BYPASS_VALVE_STATUS,
         icon="mdi:call-split",
         device_class=SensorDeviceClass.ENUM,
-        entity_category=EntityCategory.DIAGNOSTIC,
         is_enum=True,
         value_map=BYPASS_VALVE_STATUS_LABELS,
     ),
@@ -317,6 +327,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:thermometer",
+        entity_registry_enabled_default=False,
     ),
     BrinkSensorDescription(
         key="additional_temperature_sensor",
@@ -326,6 +337,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:thermometer",
+        entity_registry_enabled_default=False,
     ),
     BrinkSensorDescription(
         key=PARAM_FILTER_STATUS,
@@ -395,6 +407,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key="supply_air_flow_setpoint",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-chevron-up",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -404,6 +417,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key="exhaust_air_flow_setpoint",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-chevron-down",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -413,6 +427,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key="nominal_supply_air_flow",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-chevron-down",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -422,6 +437,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key="nominal_exhaust_air_flow",
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-chevron-up",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -457,6 +473,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key=PARAM_VENTILATION_MODE_0,
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-off",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -466,6 +483,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key=PARAM_VENTILATION_MODE_1,
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-speed-1",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -475,6 +493,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key=PARAM_VENTILATION_MODE_2,
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-speed-2",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -484,6 +503,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key=PARAM_VENTILATION_MODE_3,
         native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         icon="mdi:fan-speed-3",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -492,6 +512,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         translation_key="supply_duct_pressure",
         parameter_key="supply_duct_pressure",
         native_unit_of_measurement=UnitOfPressure.PA,
+        device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -500,6 +521,7 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         translation_key="exhaust_duct_pressure",
         parameter_key="exhaust_duct_pressure",
         native_unit_of_measurement=UnitOfPressure.PA,
+        device_class=SensorDeviceClass.PRESSURE,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
@@ -536,10 +558,26 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         parameter_key="gateway_state",
         icon="mdi:lan",
         device_class=SensorDeviceClass.ENUM,
-        options=list(GATEWAY_STATE_LABELS_STR.values()),
+        options=list(GATEWAY_STATE_LABELS.values()),
         is_enum=True,
         is_device_attribute=True,
-        value_map=GATEWAY_STATE_LABELS_STR,
+        value_map=GATEWAY_STATE_LABELS,
+    ),
+    BrinkSensorDescription(
+        key="ip_address",
+        translation_key="ip_address",
+        parameter_key="ip_address",
+        icon="mdi:lan",
+        is_device_attribute=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    BrinkSensorDescription(
+        key="dns_server",
+        translation_key="dns_server",
+        parameter_key="dns_server",
+        icon="mdi:lan",
+        is_device_attribute=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 )
 
@@ -679,10 +717,6 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         """Initialize the Brink sensor."""
         super().__init__(client, coordinator, system_id, description.parameter_key)
         self.entity_description = description
-#         _LOGGER.warning(
-#             "translation_key=%s",
-#             self.entity_description.translation_key,
-#         )
 
     @property
     def unique_id(self):
@@ -694,6 +728,9 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         if self.entity_description.parameter_key == "ventilation_percentage":
             return {}
 
+        # Get base attributes
+        attributes: dict[str, object] = {}
+
         param = self.data or {}
 
         attributes = {
@@ -702,21 +739,52 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             "name": str(param.get("name")),
             "raw_name": str(param.get("raw_name")),
             "value": str(param.get("value")),
-            "value_state": param.get("value_state"),
-            "default_value": str(param.get("default_value")),  # remove
-            "numeric_id": str(param.get("numeric_id")),
-            "read_write": param.get("read_write"),
-            "control_type": param.get("control_type"),
-            "value_id": str(param.get("value_id")),
-            "min_value": str(param.get("min_value")),  # remove
-            "max_value": str(param.get("max_value")),  # remove
-            "step_width": str(param.get("step_width")),  # remove
+            "_raw_value": str(self._raw_value),
             "decimals": str(param.get("decimals")),
-            "list_items": param.get("list_items"),  # remove
-            "unit_of_measure": str(param.get("unit_of_measure")),
+            "numeric_id": str(param.get("numeric_id")),
+            "value_id": str(param.get("value_id")),
             "component_id": str(param.get("component_id")),
-            "raw_options": param.get("options"),  # remove
         }
+
+        value_state = param.get("value_state")
+        attributes["raw_value_state"] = value_state
+
+        if isinstance(value_state, int):
+            attributes["value_state"] = VALUE_STATE_MAP.get(value_state, "unknown")
+        else:
+            attributes["value_state"] = "unavailable"
+
+        control_type = param.get("control_type")
+        attributes["raw_control_type"] = control_type
+
+        if isinstance(control_type, int):
+            attributes["control_type"] = CONTROL_TYPE_MAP.get(control_type, "unknown")
+        else:
+            attributes["control_type"] = "unavailable"
+
+        read_write = param.get("read_write")
+        attributes["raw_read_write"] = read_write
+
+        if isinstance(read_write, int):
+            attributes["read_write"] = READ_WRITE_MAP.get(read_write, "unknown")
+        else:
+            attributes["read_write"] = "unavailable"
+
+        if param.get("options") != []:
+            attributes["raw_options"] = param.get("options")
+
+        # These attibutes are NOT available to sensor entity, if they do it should not be a select,enum or number entity
+        for key in (
+            "options",
+            "list_items",
+            "default_value",
+            "unit_of_measure",
+            "min_value",
+            "max_value",
+            "step_width",
+        ):
+            if (value := param.get(key)) is not None and value != []:
+                attributes[key] = value
 
         if param.get("options"):
             attributes["raw_options"] = [
@@ -800,8 +868,21 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         if self.parameter_key == "ventilation_percentage":
             return self._calculate_ventilation_percentage()
 
+        if self.parameter_key == "ip_address":
+            if self.data is None:
+                return None
+            value = str(self.data.get("value"))
+            return value
+
+        if self.parameter_key == "dns_server":
+            if self.data is None:
+                return None
+            value = str(self.data.get("value"))
+            return value
+
         _LOGGER.debug(
-            "gateway_state raw=%s",
+            "sensor value %s raw=%s",
+            self.parameter_key,
             self._raw_value,
         )
 
@@ -817,10 +898,10 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
                 _LOGGER.debug(
                     "gateway_state value=%s mapped=%s options=%s",
                     value,
-                    value_map.get(str(value), str(value)),
+                    value_map.get(int(value), str(value)),
                     self.options,
                 )
-                return value_map.get(str(value), "unknown")
+                return value_map.get(int(value), "unknown")
 
             param = self.data
 
@@ -847,44 +928,12 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         return int(number) if number.is_integer() else number
 
     @property
-    def old_native_value(self):
-        if self.parameter_key == "ventilation_percentage":
-            return self._calculate_ventilation_percentage()
-
-        param = self.data
-        if param is None:
-            return None
-
-        value = param.get("value")
-        if value is None:
-            return None
-
-        if self.entity_description.is_enum:
-            value_map = self.entity_description.value_map
-            if value_map is not None:
-                return value_map.get(str(value), str(value))
-
-            selected = next(
-                (item["label"] for item in param.get("options", []) if item["value"] == str(value)),
-                None,
-            )
-            return selected or str(value)
-
-        try:
-            number = float(value)
-        except (TypeError, ValueError):
-            return value
-
-        if number.is_integer():
-            return int(number)
-        return number
-
-    @property
     def available(self) -> bool:
         """Return if entity is available."""
 
         _LOGGER.debug(
-            "gateway_state available: super=%s data=%s raw=%s",
+            "gateway_state available: key=%s super=%s data=%s raw=%s",
+            self.entity_description.parameter_key,
             super().available,
             self.data,
             self._raw_value,
@@ -896,6 +945,12 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         if self.entity_description.parameter_key == "gateway_state":
             return True
 
+        if self.entity_description.parameter_key == "ip_address":
+            return True
+
+        if self.entity_description.parameter_key == "dns_server":
+            return True
+
         param = self.data
 
         return (
@@ -904,7 +959,7 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             and param.get("value_state") != 5
         )
 
-    def _calculate_ventilation_percentage(self) -> int | None:
+    def old_calculate_ventilation_percentage(self) -> int | None:
         """Calculate ventilation percentage based on configured airflow levels."""
         parameters = self._device.get("parameters", {})
 
@@ -915,7 +970,10 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             exhaust_flow = float(
                 parameters["actual_exhaust_air_flow"]["value"]
             )
-
+            min_airflow = 0
+            max_airflow = float(
+                parameters["ventilation_mode_3_airflow"]["max_value"]
+            )
             airflow_0 = float(
                 parameters["ventilation_mode_0_airflow"]["value"]
             )
@@ -956,7 +1014,6 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         for index in range(len(levels) - 1):
             lower_flow, lower_percent = levels[index]
             upper_flow, upper_percent = levels[index + 1]
-            upper_flow = 300  # do not use airflow_3 as max, use 300 for 100%
 
             if lower_flow <= current_flow <= upper_flow:
                 if upper_flow == lower_flow:
@@ -969,12 +1026,50 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
 
                 percentage = (
                     lower_percent
-                    + (
-                        fraction
-                        * (upper_percent - lower_percent)
-                    )
+                    + fraction * (upper_percent - lower_percent)
                 )
 
                 return round(percentage)
 
         return None
+
+    def _calculate_ventilation_percentage(self) -> int | None:
+        """Calculate ventilation percentage based on configured airflow levels."""
+        if self._device:
+            parameters = self._device.get("parameters", {})
+
+        try:
+            supply_flow = float(
+                parameters["actual_supply_air_flow"]["value"]
+            )
+            exhaust_flow = float(
+                parameters["actual_exhaust_air_flow"]["value"]
+            )
+            min_airflow = 0
+            max_airflow = float(
+                parameters["ventilation_mode_3_airflow"]["max_value"]
+            )
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+        current_flow = (
+            supply_flow
+            + exhaust_flow
+        ) / 2
+
+        if max_airflow <= min_airflow:
+            return None
+
+        if current_flow <= min_airflow:
+            return 0
+
+        if current_flow >= max_airflow:
+            return 100
+
+        # Calculate percentage based on current flow
+        fraction = (current_flow - min_airflow) / (max_airflow - min_airflow)
+        return round(fraction * 100)

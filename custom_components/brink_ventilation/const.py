@@ -19,6 +19,12 @@ OIDC_CLIENT_ID = "spa"
 OIDC_REDIRECT_URI = "https://www.brink-home.com/app/"
 OIDC_SCOPE = "openid api role locale"
 
+MODE_AUTOMATIC = "automatic"
+MODE_MANUAL = "manual"
+MODE_HOLIDAY = "holiday"
+MODE_PARTY = "party"
+MODE_NIGHT = "night_ventilation"
+
 LEVEL_LABELS = {
     0: "off",
     1: "low",
@@ -27,17 +33,17 @@ LEVEL_LABELS = {
 }
 
 VENTILATION_LEVEL_LABELS = {
-    0: "stand_0",
-    1: "stand_1",
-    2: "stand_2",
-    3: "stand_3",
+    0: "Off",
+    1: "Low",
+    2: "Medium",
+    3: "High",
 }
 
 # when changing gateway password within brink device the portal will be in locked state untill you (re)logged in to the portal again.
-GATEWAY_STATE_LABELS_STR: dict[str, str] = {
-    "0": "locked",
-    "1": "offline",
-    "2": "online",
+GATEWAY_STATE_LABELS: dict[int, str] = {
+    0: "locked",
+    1: "offline",
+    2: "online",
 }
 
 GATEWAY_TYPE_LABELS = {
@@ -48,7 +54,7 @@ VALUE_STATE_VALID = 0
 VALUE_STATE_CONFIG = 1
 VALUE_STATE_NO_DATA = 5
 
-VALUE_STATE_LABELS: dict[int, str] = {
+VALUE_STATE_MAP: dict[int, str] = {
     VALUE_STATE_VALID: "valid",
     VALUE_STATE_CONFIG: "config",
     VALUE_STATE_NO_DATA: "no_data",
@@ -58,7 +64,7 @@ CONTROL_TYPE_ENUM = 0
 CONTROL_TYPE_NUMERIC = 6
 CONTROL_TYPE_TEXT = 9
 
-CONTROL_TYPE_LABELS: dict[int, str] = {
+CONTROL_TYPE_MAP: dict[int, str] = {
     CONTROL_TYPE_ENUM: "enum",
     CONTROL_TYPE_NUMERIC: "numeric",
     CONTROL_TYPE_TEXT: "text",
@@ -148,12 +154,12 @@ RH_SENSOR_SENSITIVITY_LABELS: dict[str, str] = {
     "2": "very_high",
 }
 
-BYPASS_VALVE_STATUS_LABELS: dict[str, str] = {
-    "0": "initialization",
-    "1": "opening",
-    "2": "closing",
-    "3": "open",
-    "4": "closed",
+BYPASS_VALVE_STATUS_LABELS: dict[int, str] = {
+    0: "initialization",
+    1: "opening",
+    2: "closing",
+    3: "open",
+    4: "closed",
 }
 
 FILTER_FAULT_CONDITION_LABELS: dict[str, str] = {
@@ -163,40 +169,40 @@ FILTER_FAULT_CONDITION_LABELS: dict[str, str] = {
     "3": "filter_and_fault_condition",
 }
 
-ACTIVE_CONTROL_STATUS_LABELS: dict[str, str] = {
-    "0": "Standby",
-    "1": "Bootloader",
-    "2": "Non-blocking Error",
-    "3": "Blocking Error",
-    "4": "Manual",
-    "5": "Holiday",
-    "6": "Night Ventilation",
-    "7": "Party",
-    "8": "Bypass Boost",
-    "9": "Normal Boost",
-    "10": "Auto CO2",
-    "11": "Auto eBus",
-    "12": "Auto Modbus",
-    "13": "Auto LAN/WLAN Portal",
-    "14": "Auto LAN/WLAN Local",
+ACTIVE_CONTROL_STATUS_LABELS: dict[int, str] = {
+    0: "Standby",
+    1: "Bootloader",
+    2: "Non-blocking Error",
+    3: "Blocking Error",
+    4: "Manual",
+    5: "Holiday",
+    6: "Night Ventilation",
+    7: "Party",
+    8: "Bypass Boost",
+    9: "Normal Boost",
+    10: "Auto CO2",
+    11: "Auto eBus",
+    12: "Auto Modbus",
+    13: "Auto LAN/WLAN Portal",
+    14: "Auto LAN/WLAN Local",
 }
 
-ACTIVE_CONTROL_STATUS_LABELS: dict[str, str] = {
-    "0": "standby",
-    "1": "bootloader",
-    "2": "non_locking_fault",
-    "3": "blocking_error",
-    "4": "manual",
-    "5": "holiday",
-    "6": "night_ventilation_mode",
-    "7": "party",
-    "8": "bypass_boost",
-    "9": "normal_boost",
-    "10": "auto_co2",
-    "11": "auto_ebus",
-    "12": "auto_modbus",
-    "13": "auto_lan_wlan_portal",
-    "14": "auto_lan_wlan_local",
+ACTIVE_CONTROL_STATUS_LABELS: dict[int, str] = {
+    0: "standby",
+    1: "bootloader",
+    2: "non_locking_fault",
+    3: "blocking_error",
+    4: "manual",
+    5: "holiday",
+    6: "night_ventilation_mode",
+    7: "party",
+    8: "bypass_boost",
+    9: "normal_boost",
+    10: "auto_co2",
+    11: "auto_ebus",
+    12: "auto_modbus",
+    13: "auto_lan_wlan_portal",
+    14: "auto_lan_wlan_local",
 }
 
 BYPASS_OPERATION_LABELS: dict[str, str] = {
@@ -228,9 +234,9 @@ GATEWAY_STATE_LABELS: dict[int, str] = {
     GATEWAY_STATE_ONLINE: "online",
 }
 
-FILTER_STATUS_LABELS: dict[str, str] = {
-    "0": "not_dirty",
-    "1": "dirty",
+FILTER_STATUS_LABELS: dict[int, str] = {
+    0: "not_dirty",
+    1: "dirty",
 }
 
 CONTACT_TYPE_LABELS: dict[str, str] = {
@@ -305,24 +311,24 @@ FROST_PROTECTION_STATE_LABELS: dict[str, str] = {
     "12": "water_block_test",
 }
 
-FROST_PROTECTION_STATUS_LABELS: dict[str, str] = {
-    "0": "not_initialized",
-    "1": "power_up_delay",
-    "2": "no_frost",
-    "3": "no_frost_delay",
-    "4": "frost_control_start_delay",
-    "5": "wait_for_icing",
-    "6": "ice_detected_delay",
-    "7": "heating",
-    "8": "wait_for_free_heater",
-    "9": "fan_control_start_delay",
-    "10": "fan_control_wait",
-    "11": "fan_control",
-    "12": "fan_off_delay",
-    "13": "fan_off",
-    "14": "fan_restarting",
-    "15": "error",
-    "16": "periodic_coil_test",
+FROST_PROTECTION_STATUS_LABELS: dict[int, str] = {
+    0: "not_initialized",
+    1: "power_up_delay",
+    2: "no_frost",
+    3: "no_frost_delay",
+    4: "frost_control_start_delay",
+    5: "wait_for_icing",
+    6: "ice_detected_delay",
+    7: "heating",
+    8: "wait_for_free_heater",
+    9: "fan_control_start_delay",
+    10: "fan_control_wait",
+    11: "fan_control",
+    12: "fan_off_delay",
+    13: "fan_off",
+    14: "fan_restarting",
+    15: "error",
+    16: "periodic_coil_test",
 }
 
 FROST_PROTECTION_STATE_TRANSLATIONS: dict[str, str] = {
@@ -341,17 +347,17 @@ FROST_PROTECTION_STATE_TRANSLATIONS: dict[str, str] = {
     "water_block_test": "Waterbloktest",
 }
 
-PREHEATER_STATUS_LABELS: dict[str, str] = {
-    "0": "off",
-    "1": "auto",
-    "2": "lock_current",
-    "3": "lock_maximum",
+PREHEATER_STATUS_LABELS: dict[int, str] = {
+    0: "off",
+    1: "auto",
+    2: "lock_current",
+    3: "lock_maximum",
 }
 
-GEOTHERMAL_HEAT_EXCHANGER_LABELS: dict[str, str] = {
-    "0": "open_low",
-    "1": "closed",
-    "3": "open_high",
+GEOTHERMAL_HEAT_EXCHANGER_LABELS: dict[int, str] = {
+    0: "open_low",
+    1: "closed",
+    3: "open_high",
 }
 
 CN_POSITION_LABELS: dict[str, str] = {
@@ -382,12 +388,6 @@ EXHAUST_FAN_ACTION_LABELS: dict[str, str] = {
 BINARY_SENSOR_LABELS: dict[str, str] = {
     "0": "off",
     "1": "on",
-}
-
-GEOTHERMAL_HEAT_EXCHANGER_LABELS: dict[str, str] = {
-    "0": "open_low",
-    "1": "closed",
-    "3": "open_high",
 }
 
 MODE_VALVE_24V_CONTROL_LABELS: dict[str, str] = {
@@ -511,6 +511,17 @@ PARAMETER_NAMES = {
     16136: "mode_valve_24v_control",
     16137: "valve_control",
     16143: "bypass_operation",
+    21002: "deviceTypeTitle",
+    21008: "ip_address",
+    21009: "subnet_mask",
+    21010: "default_gateway",
+    21011: "dns_server",
+    21012: "dhcp_active",
+    21013: "wifi_active",
+    21014: "internet_connection_enabled",
+    21015: "lan_mac_address",
+    21016: "wifi_mac_address",
+    21017: "system_name",
 }
 
 UID_PARAMETER_MAP: dict[int, str] = {

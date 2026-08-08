@@ -38,14 +38,23 @@ class BrinkHomeSystemEntity(CoordinatorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device info for the Brink entity."""
-        device = self._device or {}
+        device = self._device
+        if device is None:
+            device = {}
+        ip_address = device.get("ip_address")
+        kwargs: dict[str, object] = (
+            {"configuration_url": "http://brink.local/"}
+            if ip_address
+            else {}
+        )
         return DeviceInfo(
             identifiers={(DOMAIN, str(self.system_id))},
-            name=device.get("model", self.device_name), # use device model as device title in UI
+            name=device.get("model", self.device_name),
             manufacturer=DEFAULT_NAME,
             model=device.get("model", DEFAULT_MODEL),
             serial_number=device.get("serial_number"),
             sw_version=device.get("sw_version"),
+            **kwargs,
         )
 
     @property

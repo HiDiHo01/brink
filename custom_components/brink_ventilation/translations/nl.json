@@ -49,74 +49,32 @@
   },
   "entity": {
     "fan": {
-      "brink_ventilation": {
+      "ventilation_airflow": {
+        "name": "Ventilatie snelheid",
         "state_attributes": {
           "preset_mode": {
             "state": {
               "Automatic": "Automatisch",
-              "automatic": "Automatisch",
-              "manual": "Handmatig",
-              "holiday": "Vakantie",
-              "party": "Feest",
-              "night_ventilation": "Nachtventilatie"
+              "Manual": "Handmatig",
+              "Holiday": "Vakantie",
+              "Party": "Feest",
+              "Night ventilation": "Nachtventilatie"
             }
           }
         }
       },
-      "ventilation": {
-        "name": "Ventilatie"
-      },
       "ventilation_level": {
         "name": "Ventilatiestand",
-        "state": {
-          "Automatic": "Automatisch",
-          "automatic": "Automatisch",
-          "manual": "Handmatig",
-          "holiday": "Vakantie",
-          "party": "Feest",
-          "night_ventilation": "Nachtventilatie"
-        }
-      },
-      "ventilation_mode": {
-        "name": "Ventilatie modus",
-        "preset_mode": {
-          "state":{
-            "automatic": "Automatisch",
-            "Automatic": "Automatisch",
-            "manual": "Handmatig",
-            "holiday": "Vakantie",
-            "party": "Party",
-            "night_ventilation": "Nachtventilatie",
-            "Automatic mode": "Automatisch",
-            "Manual": "Handmatig",
-            "Holiday mode": "Vakantie",
-            "Party mode": "Party",
-            "Night ventilation mode": "Nachtventilatie"
-          },
-          "automatic": "Automatisch",
-          "Automatic": "Automatisch",
-          "manual": "Handmatig",
-          "holiday": "Vakantie",
-          "party": "Party",
-          "night_ventilation": "Nachtventilatie",
-          "Automatic mode": "Automatisch",
-          "Manual": "Handmatig",
-          "Holiday mode": "Vakantie",
-          "Party mode": "Party",
-          "Night ventilation mode": "Nachtventilatie"
-        },
-        "state":{
-          "automatic": "Automatisch",
-          "Automatic": "Automatisch",
-          "manual": "Handmatig",
-          "holiday": "Vakantie",
-          "party": "Party",
-          "night_ventilation": "Nachtventilatie",
-          "Automatic mode": "Automatisch",
-          "Manual": "Handmatig",
-          "Holiday mode": "Vakantie",
-          "Party mode": "Party",
-          "Night ventilation mode": "Nachtventilatie"
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "Automatic": "Automatisch",
+              "Manual": "Handmatig",
+              "Holiday": "Vakantie",
+              "Party": "Feest",
+              "Night ventilation": "Nachtventilatie"
+            }
+          }
         }
       }
     },
@@ -447,6 +405,12 @@
       }
     },
     "sensor": {
+      "ip_address":{
+        "name": "IP adres"
+      },
+      "dns_server":{
+        "name": "DNS server"
+      },
       "additional_temperature_sensor":{
         "name": "Extra temperatuur sensor"
       },
@@ -454,7 +418,13 @@
         "name": "Vermogen voorverwarmer"
       },
       "ventilation_level": {
-        "name": "Ventilatiestand"
+        "name": "Ventilatiestand",
+        "state": {
+          "Off": "Uit",
+          "Low": "Laag",
+          "Medium": "Gemiddeld",
+          "High": "Hoog"
+        }
       },
       "ventilation_mode_0_airflow": {
         "name": "Ventilatiestand 0"

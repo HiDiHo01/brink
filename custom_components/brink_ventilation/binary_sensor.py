@@ -23,8 +23,6 @@ from .const import (
     PARAM_CN1_SWITCH_INPUT,
     PARAM_CN2_POSITION,
     PARAM_CN2_SWITCH_INPUT,
-    PARAM_CO1_SENSOR_STATUS,
-    PARAM_CO2_SENSOR_STATUS,
     PARAM_FILTER_STATUS,
     PARAM_RH_SENSOR_STATUS,
 )
@@ -201,7 +199,6 @@ class BrinkHomeBinarySensorEntity(
 
             if custom_attributes:
                 attributes.update(custom_attributes)
-                # attributes = custom_attributes
 
         return attributes
 
@@ -287,20 +284,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BrinkBinarySensorDescription, ...] = (
         icon="mdi:water-percent",
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-    ),
-    BrinkBinarySensorDescription(
-        key=PARAM_CO1_SENSOR_STATUS,
-        translation_key="co1_sensor_status",
-        parameter_key=PARAM_CO1_SENSOR_STATUS,
-        icon="mdi:molecule-co2",
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    BrinkBinarySensorDescription(
-        key=PARAM_CO2_SENSOR_STATUS,
-        translation_key="co2_sensor_status",
-        parameter_key=PARAM_CO2_SENSOR_STATUS,
-        icon="mdi:molecule-co2",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
     BrinkBinarySensorDescription(
         key="ebus_co2_sensor_status",

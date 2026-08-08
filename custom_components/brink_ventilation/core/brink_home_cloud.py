@@ -24,7 +24,7 @@ from aiohttp import (
 
 from ..const import (
     API_V1_URL,
-    CONTROL_TYPE_LABELS,
+    CONTROL_TYPE_MAP,
     OIDC_AUTH_URL,
     OIDC_CLIENT_ID,
     OIDC_REDIRECT_URI,
@@ -32,7 +32,7 @@ from ..const import (
     OIDC_TOKEN_URL,
     PARAM_NAME_MAP,
     PARAMETER_NAMES,
-    VALUE_STATE_LABELS,
+    VALUE_STATE_MAP,
     WRITE_VALUE_STATE,
 )
 from ..translations import TRANSLATIONS
@@ -101,8 +101,23 @@ class BrinkHomeCloud:
 
     async def get_systems(self) -> list[dict[str, Any]]:
         """Return the systems visible to the current account."""
-        response = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=5")
+        response1 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=1")
+        response2 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=2")
+        response3 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=3")
+        response4 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=4")
+        response5 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=5")
+        response = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=6")
         try:
+            payload = await response1.json()
+            _LOGGER.debug("Brink Flair system payload1: %s", payload)
+            payload = await response2.json()
+            _LOGGER.debug("Brink Flair system payload2: %s", payload)
+            payload = await response3.json()
+            _LOGGER.debug("Brink Flair system payload3: %s", payload)
+            payload = await response4.json()
+            _LOGGER.debug("Brink Flair system payload4: %s", payload)
+            payload = await response5.json()
+            _LOGGER.debug("Brink Flair system payload5: %s", payload)
             payload = await response.json()
             _LOGGER.debug("Brink Flair system payload: %s", payload)
         finally:
@@ -115,10 +130,20 @@ class BrinkHomeCloud:
                 continue
             systems.append(
                 {
-                    "system_id": system_id,
                     "name": item.get("systemName") or "Brink",
                     "serial_number": item.get("serialNumber"),
+                    "system_id": system_id,
+                    "is_system_owner": item.get("isSystemOwner"),
+                    "is_editable": item.get("isEditable"),
+                    "access_level": item.get("accessLevel"),
+                    "owner_group_name": item.get("ownerGroupName"),
+                    "is_favorite": item.get("isFavorite"),
                     "gateway_state": item.get("gatewayState"),
+                    "active_alert_count": item.get("activeAlertCount"),
+                    "iana_time_zone": item.get("ianaTimeZone"),
+                    "two_letter_country_code": item.get("twoLetterCountryCode"),
+                    "user_group_names": item.get("userGroupNames"),
+                    "total_count": item.get("totalCount"),
                 }
             )
         return systems
@@ -281,7 +306,6 @@ class BrinkHomeCloud:
         nonce = secrets.token_urlsafe(32)
 
         jar = CookieJar(unsafe=False)
-        # jar = aiohttp.CookieJar(unsafe=False)
         async with ClientSession(cookie_jar=jar) as oidc_session:
             login_url, csrf_token, return_url = await self._fetch_login_page(
                 oidc_session, code_challenge, state, nonce
@@ -347,11 +371,8 @@ class BrinkHomeCloud:
             "Password": self._password,
             "__RequestVerificationToken": csrf_token,
         }
-        if return_url:
-            if return_url.startswith("/") and not return_url.startswith("//"):
-                form_data["ReturnUrl"] = return_url
-            elif self._is_trusted_url(return_url):
-                form_data["ReturnUrl"] = return_url
+        if return_url and return_url.startswith("/") and not return_url.startswith("//") or self._is_trusted_url(return_url):
+            form_data["ReturnUrl"] = return_url
 
         async with async_timeout.timeout(30):
             response = await session.post(
@@ -567,17 +588,16 @@ class BrinkHomeCloud:
                             param.get("value"),
                         )
 
-                    if isinstance(value_state, int):
-                        if value_state not in BrinkHomeCloud._OBSERVED_VALUE_STATES:
-                            BrinkHomeCloud._OBSERVED_VALUE_STATES.add(value_state)
+                    if isinstance(value_state, int) and value_state not in BrinkHomeCloud._OBSERVED_VALUE_STATES:
+                        BrinkHomeCloud._OBSERVED_VALUE_STATES.add(value_state)
 
-                            _LOGGER.info(
-                                "Discovered valueState=%s (%s) parameter=%s (%s)",
-                                value_state,
-                                VALUE_STATE_LABELS.get(value_state, "unknown"),
-                                key,
-                                numeric_id,
-                            )
+                        _LOGGER.info(
+                            "Discovered valueState=%s (%s) parameter=%s (%s)",
+                            value_state,
+                            VALUE_STATE_MAP.get(value_state, "unknown"),
+                            key,
+                            numeric_id,
+                        )
 
 #                    if value_state != 0:
 #                        _LOGGER.info(
@@ -599,7 +619,7 @@ class BrinkHomeCloud:
                             _LOGGER.info(
                                 "Discovered controlType=%s (%s) parameter=%s (%s)",
                                 control_type,
-                                CONTROL_TYPE_LABELS.get(control_type, "unknown"),
+                                CONTROL_TYPE_MAP.get(control_type, "unknown"),
                                 key,
                                 numeric_id,
                             )

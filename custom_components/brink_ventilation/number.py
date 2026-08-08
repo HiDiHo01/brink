@@ -24,6 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
+    CONTROL_TYPE_MAP,
     DATA_CLIENT,
     DATA_COORDINATOR,
     DOMAIN,
@@ -47,6 +48,8 @@ from .const import (
     PARAM_VENTILATION_MODE_1,
     PARAM_VENTILATION_MODE_2,
     PARAM_VENTILATION_MODE_3,
+    READ_WRITE_MAP,
+    VALUE_STATE_MAP,
 )
 from .entity import BrinkHomeDeviceEntity
 
@@ -245,6 +248,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_1_max_ppm",
@@ -255,6 +259,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_2_min_ppm",
@@ -265,6 +270,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_2_max_ppm",
@@ -275,6 +281,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_3_min_ppm",
@@ -285,6 +292,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_3_max_ppm",
@@ -295,6 +303,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_4_min_ppm",
@@ -305,6 +314,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
     BrinkNumberEntityDescription(
         key="co2_sensor_4_max_ppm",
@@ -315,6 +325,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
+        entity_registry_enabled_default=False,
     ),
 )
 
@@ -493,7 +504,8 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
         parameters = device.get("parameters", {})
 
         _LOGGER.debug(
-            "gateway_state available: super=%s data=%s raw=%s",
+            "gateway_state available: key=%s super=%s data=%s raw=%s",
+            self.entity_description.parameter_key,
             super().available,
             self.data,
             self.value,
@@ -531,27 +543,60 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
     def extra_state_attributes(self) -> dict[str, object]:
         """Return extra state attributes."""
 
-        return {
+        # Get base attributes
+        attributes: dict[str, object] = {}
+
+        param = self.data or {}
+
+        attributes = {
             "key": str(self.entity_description.key),
             "translation_key": str(self.entity_description.translation_key),
-            "name": str(self.data.get("name")),
-            "raw_name": str(self.data.get("raw_name")),
-            "value": str(self.data.get("value")),
-            "value_state": str(self.data.get("value_state")),
-            "default_value": str(self.data.get("default_value")),
-            "numeric_id": str(self.data.get("numeric_id")),
-            "read_write": str(self.data.get("read_write")),
-            "control_type": str(self.data.get("control_type")),
-            "value_id": str(self.data.get("value_id")),
-            "min_value": str(self.data.get("min_value")),
-            "max_value": str(self.data.get("max_value")),
-            "step_width": str(self.data.get("step_width")),
-            "decimals": str(self.data.get("decimals")),
-            "list_items": str(self.data.get("list_items")),
-            "unit_of_measure": str(self.data.get("unit_of_measure")),
-            "component_id": str(self.data.get("component_id")),
-            "options": str(self.data.get("options")),
+            "name": str(param.get("name")),
+            "raw_name": str(param.get("raw_name")),
+            "value": str(param.get("value")),
+            "decimals": str(param.get("decimals")),
+            "numeric_id": str(param.get("numeric_id")),
+            "value_id": str(param.get("value_id")),
+            "component_id": str(param.get("component_id")),
+            "raw_options": param.get("options"),
+            "default_value": str(param.get("default_value")),
+            "min_value": str(param.get("min_value")),
+            "max_value": str(param.get("max_value")),
+            "step_width": str(param.get("step_width")),
+            "unit_of_measure": str(param.get("unit_of_measure")),
         }
+
+        value_state = param.get("value_state")
+        attributes["raw_value_state"] = value_state
+
+        if isinstance(value_state, int):
+            attributes["value_state"] = VALUE_STATE_MAP.get(value_state, "unknown")
+        else:
+            attributes["value_state"] = "unavailable"
+
+        control_type = param.get("control_type")
+        attributes["raw_control_type"] = control_type
+
+        if isinstance(control_type, int):
+            attributes["control_type"] = CONTROL_TYPE_MAP.get(control_type, "unknown")
+        else:
+            attributes["control_type"] = "unavailable"
+
+        read_write = param.get("read_write")
+        attributes["raw_read_write"] = read_write
+
+        if isinstance(read_write, int):
+            attributes["read_write"] = READ_WRITE_MAP.get(read_write, "unknown")
+        else:
+            attributes["read_write"] = "unavailable"
+
+        if param.get("options") != []:
+            attributes["raw_options"] = param.get("options")
+
+        if param.get("list_items") != []:
+            attributes["list_items"] = param.get("list_items")
+
+        return attributes
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the airflow value."""

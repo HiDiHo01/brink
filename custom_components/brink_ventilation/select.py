@@ -12,6 +12,7 @@ from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     CN_SWITCH_INPUT_CONDITION_LABELS,
+    CONTROL_TYPE_MAP,
     DATA_CLIENT,
     DATA_COORDINATOR,
     DOMAIN,
@@ -28,7 +29,9 @@ from .const import (
     PARAM_SIGNAL_OUTPUT_MODE,
     PARAM_VALVE_CONTROL,
     PARAM_VENTILATION_LEVEL,
+    READ_WRITE_MAP,
     RH_SENSOR_SENSITIVITY_LABELS,
+    VALUE_STATE_MAP,
 )
 from .entity import BrinkHomeDeviceEntity
 
@@ -273,26 +276,61 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         """Return extra state attributes."""
         param = self.data or {}
 
-        return {
+        # Get base attributes
+        attributes: dict[str, object] = {}
+
+        # These attibutes are available to select entity
+        attributes |= {
             "key": self.entity_description.key,
             "translation_key": self.entity_description.translation_key,
-            "name": param.get("name", "onbeschikbaar"),
-            "raw_name": param.get("raw_name", "onbeschikbaar"),
-            "value": param.get("value", "onbeschikbaar"),
-            "value_state": param.get("value_state", "onbeschikbaar"),
-            "default_value": param.get("default_value", "onbeschikbaar"),
-            "numeric_id": param.get("numeric_id", "onbeschikbaar"),
-            "read_write": param.get("read_write", "onbeschikbaar"),
-            "control_type": param.get("control_type", "onbeschikbaar"),
+            "name": param.get("name", "unavailable"),
+            "raw_name": param.get("raw_name", "unavailable"),
+            "value": param.get("value", "unavailable"),
+            "numeric_id": param.get("numeric_id", "unavailable"),
             "value_id": param.get("value_id", "onbeschikbaar"),
-            "min_value": param.get("min_value", "onbeschikbaar"),
-            "max_value": param.get("max_value", "onbeschikbaar"),
-            "step_width": param.get("step_width", "onbeschikbaar"),
-            "decimals": param.get("decimals", "onbeschikbaar"),
-            "unit_of_measure": param.get("unit_of_measure", "onbeschikbaar"),
-            "component_id": param.get("component_id", "onbeschikbaar"),
-            "raw_options": param.get("options", "onbeschikbaar"),
+            "component_id": param.get("component_id", "unavailable"),
+            "raw_options": param.get("options", "unavailable"),
         }
+
+        value_state = param.get("value_state")
+        attributes["raw_value_state"] = value_state
+
+        if isinstance(value_state, int):
+            attributes["value_state"] = VALUE_STATE_MAP.get(value_state, "unknown")
+        else:
+            attributes["value_state"] = "unavailable"
+
+        control_type = param.get("control_type")
+        attributes["raw_control_type"] = control_type
+
+        if isinstance(control_type, int):
+            attributes["control_type"] = CONTROL_TYPE_MAP.get(control_type, "unknown")
+        else:
+            attributes["control_type"] = "unavailable"
+
+        read_write = param.get("read_write")
+        attributes["raw_read_write"] = read_write
+
+        if isinstance(read_write, int):
+            attributes["read_write"] = READ_WRITE_MAP.get(read_write, "unknown")
+        else:
+            attributes["read_write"] = "unavailable"
+
+        # These attibutes are NOT available to select entity, if they do it should not be a select entity
+        for key in (
+            "default_value",
+            "unit_of_measure",
+            "min_value",
+            "max_value",
+            "step_width",
+            "decimals",
+        ):
+            if (value := param.get(key)) is not None:
+                attributes[key] = value
+            # else:
+            #    attributes[key] = "unavailable"
+
+        return attributes
 
     @property
     def unique_id(self) -> str:
@@ -337,30 +375,6 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         await self._async_write_value(str(selected_value))
 
     @property
-    def old_current_option(self) -> str | None:
-        """Return the currently selected option."""
-        param = self.data
-
-        if param is None:
-            return None
-
-        current_value = str(param.get("value"))
-
-        label_map = self.entity_description.label_map
-
-        if label_map:
-            return label_map.get(current_value, current_value)
-
-        return next(
-            (
-                option["label"]
-                for option in param.get("options", [])
-                if option["value"] == current_value
-            ),
-            None,
-        )
-
-    @property
     def current_option(self) -> str | None:
         """Return current option."""
         param = self.data
@@ -375,13 +389,6 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         if label_map:
             result = label_map.get(current_value)
 
-            # _LOGGER.warning(
-            #     "Select label map %s current=%r value=%r",
-            #     self.parameter_key,
-            #     result,
-            #     current_value,
-            # )
-
             return result
 
         return next(
@@ -394,24 +401,6 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         )
 
     @property
-    def old_options(self) -> list[str]:
-        """Return available options."""
-        param = self.data
-
-        if param is None:
-            return []
-
-        if self.entity_description.label_map:
-            return list(
-                self.entity_description.label_map.values()
-            )
-
-        return [
-            option["label"]
-            for option in param.get("options", [])
-        ]
-
-    @property
     def options(self) -> list[str]:
         """Return available options."""
 
@@ -419,11 +408,7 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if label_map:
             result = list(label_map.values())
-            # _LOGGER.debug(
-            #     "Select %s options=%r",
-            #     self.parameter_key,
-            #     result,
-            # )
+
             return result
 
         param = self.data
