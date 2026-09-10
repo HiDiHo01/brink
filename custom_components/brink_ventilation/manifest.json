@@ -7,5 +7,5 @@
   "integration_type": "device",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/samuolis/brink/issues",
-  "version": "1.0.2"
+  "version": "2.0.0"
 }

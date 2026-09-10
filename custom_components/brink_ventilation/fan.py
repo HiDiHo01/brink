@@ -36,6 +36,12 @@ from .entity import BrinkHomeDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+SERVICE_SET_AIRFLOW = "set_airflow"
+SERVICE_SET_LEVEL = "set_level"
+
+ATTR_AIRFLOW = "airflow"
+ATTR_LEVEL = "level"
+
 SPEED_RANGE = (1, 3)
 DEFAULT_ON_PERCENTAGE = 33
 
@@ -74,29 +80,10 @@ async def async_setup_entry(
     client = hass.data[DOMAIN][entry.entry_id][DATA_CLIENT]
     coordinator = hass.data[DOMAIN][entry.entry_id][DATA_COORDINATOR]
 
-    platform = entity_platform.async_get_current_platform()
-
-    platform.async_register_entity_service(
-        "set_level",
-        {
-            vol.Required("level"): vol.All(
-                vol.Coerce(int),
-                vol.In([0, 1, 2, 3]),
-            )
-        },
-        "async_set_level",
-    )
-
-    platform.async_register_entity_service(
-        "set_airflow",
-        {"airflow": int},
-        "async_set_airflow",
-    )
-
     entities: list[FanEntity] = []
 
     for system_id, device in (coordinator.data or {}).items():
-        if not device.get("parameters", {}).get(PARAM_VENTILATION_LEVEL):
+        if not device.parameters.get(PARAM_VENTILATION_LEVEL):
             continue
 
         entities.append(
@@ -115,6 +102,28 @@ async def async_setup_entry(
             )
         )
     async_add_entities(entities)
+
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        SERVICE_SET_AIRFLOW,
+        {
+            vol.Required(ATTR_AIRFLOW): vol.All(
+                vol.Coerce(int), vol.Range(min=0, max=300)
+            ),
+        },
+        "async_set_airflow",
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_SET_LEVEL,
+        {
+            vol.Required(ATTR_LEVEL): vol.All(
+                vol.Coerce(int), vol.In([0, 1, 2, 3])
+            ),
+        },
+        "async_set_level",
+    )
 
 
 class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
@@ -143,19 +152,43 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         self._level_1_max = 133
         self._level_2_max = 216
         self._level_3_max = 300
-        device = next(iter((self.coordinator.data or {}).values()), {})
-        parameters = device.get("parameters", {})
+        # device = next(iter((self.coordinator.data or {}).values()), {})
+        device = (self.coordinator.data or {}).get(self.system_id, {})
+        parameters = device.parameters
         ventilation = self.data or {}
         level = int(ventilation.get("value", 0))
         airflow_param = (
-            device["parameters"]
-            .get(f"ventilation_mode_{level}_airflow", {})
+            device.parameters.get(f"ventilation_mode_{level}_airflow", {})
         )
 
         self._current_airflow = (
             parameters.get("supply_air_flow_setpoint", {})
             .get("value")
         )
+
+        self._max_airflow = (
+            parameters.get("ventilation_mode_3_airflow", {})
+            .get("max_value", self._max_airflow)
+        )
+
+        self._level_3_max = self._max_airflow
+
+    async def async_set_airflow(self, airflow: int) -> None:
+        """Set the target airflow."""
+
+        target_airflow = max(0, min(airflow, self._max_airflow))
+
+        if target_airflow <= self._level_0_max:
+            level = 0
+        elif target_airflow <= self._level_1_max:
+            level = 1
+        elif target_airflow <= self._level_2_max:
+            level = 2
+        else:
+            level = 3
+
+        await self._set_airflow_for_level(level, target_airflow)
+        await self._async_write_level(str(level))
 
     async def async_set_level(
         self,
@@ -178,7 +211,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         """Set airflow for a ventilation level."""
 
         device = next(iter((self.coordinator.data or {}).values()), {})
-        parameters = device.get("parameters", {})
+        parameters = device.parameters
 
         parameter = parameters.get(
             f"ventilation_mode_{level}_airflow"
@@ -234,9 +267,13 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             raise HomeAssistantError("Ventilation parameter is unavailable")
 
         params = []
-        mode = self._operating_mode
+        # mode = self._operating_mode
+        mode = self._parameters.get(PARAM_OPERATING_MODE)
 
-        if mode and mode.get("value_id") is not None:
+        if (
+            isinstance(mode, dict)
+            and mode.get("value_id") is not None
+        ):
             _LOGGER.debug(
                 "Switching operating mode to manual due to fan speed change"
             )
@@ -276,7 +313,8 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         if mode is None:
             return None
 
-        return FAN_OPERATING_MODE_LABELS.get(str(mode.get("value")))
+        # return FAN_OPERATING_MODE_LABELS.get(str(mode.get("value")))
+        return FAN_OPERATING_MODE_LABELS.get(mode)
 
     async def async_set_preset_mode(
         self,
@@ -313,7 +351,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         level = int((self.data or {}).get("value", 0))
 
         device = self._device or {}
-        parameters = device.get("parameters", {})
+        parameters = device.parameters
 
         airflow = (
             parameters.get(
@@ -385,7 +423,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         await self._async_write_level("0")
 
     @property
-    def _operating_mode(self) -> dict | None:
+    def old_operating_mode(self) -> dict | None:
         """Return the operating mode parameter."""
         if self._device is None:
             return None
@@ -394,6 +432,18 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             "parameters",
             {},
         ).get(PARAM_OPERATING_MODE)
+
+    @property
+    def _operating_mode(self) -> str | None:
+        """Return the operating mode."""
+        parameter = self._parameters.get(PARAM_OPERATING_MODE)
+
+        if not isinstance(parameter, dict):
+            return None
+
+        value = parameter.get("value")
+
+        return str(value) if value is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, object]:
@@ -452,7 +502,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             attributes["read_write"] = "unavailable"
 
         device = self._device
-        parameters = device.get("parameters", {})
+        parameters = device.parameters
         level = int(param.get("value", 0))
         airflow_param = (
             parameters.get(f"ventilation_mode_{level}_airflow", {})
@@ -527,7 +577,7 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
             return None
 
         device = self._device or {}
-        parameters = device.get("parameters", {})
+        parameters = device.parameters
 
         airflow = (
             parameters.get(
@@ -586,11 +636,6 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
         airflow: int,
     ) -> None:
         """Set airflow."""
-
-        _LOGGER.warning(
-            "async_set_airflow called with airflow=%s",
-            airflow,
-        )
 
         await self.async_set_percentage(
             round(airflow / self._max_airflow * 100)

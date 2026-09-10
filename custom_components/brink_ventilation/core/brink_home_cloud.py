@@ -8,18 +8,23 @@ import hashlib
 import logging
 import secrets
 import time
+from dataclasses import dataclass
+from datetime import datetime
 from html.parser import HTMLParser
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
 
 import async_timeout
 from aiohttp import (
+    ClientConnectionError,
+    ClientConnectorError,
     ClientError,
     ClientResponse,
     ClientResponseError,
     ClientSession,
     ClientTimeout,
     CookieJar,
+    ServerDisconnectedError,
 )
 
 from ..const import (
@@ -35,6 +40,7 @@ from ..const import (
     VALUE_STATE_MAP,
     WRITE_VALUE_STATE,
 )
+from ..models import BrinkAlert, BrinkAlertLevel, BrinkSettings, BrinkSystem, BrinkUser
 from ..translations import TRANSLATIONS
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +48,19 @@ _TRUSTED_HOST = "www.brink-home.com"
 
 
 class BrinkApiError(Exception):
-    """Brink API communication error."""
+    """Represent a Brink API error."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_code: int | None = None,
+        error_type: str = "api",
+    ) -> None:
+        """Initialize the Brink API error."""
+        super().__init__(message)
+        self.error_code = error_code
+        self.error_type = error_type
 
 
 class _InputFieldExtractor(HTMLParser):
@@ -70,6 +88,33 @@ class BrinkAuthError(Exception):
         self.is_credentials_error = is_credentials_error
 
 
+class BrinkClient:
+    """Base class for Brink Home API clients."""
+
+    def __init__(self, session: ClientSession) -> None:
+        self._session = session
+
+
+@dataclass(slots=True, frozen=True)
+class BrinkOidcConfig:
+    """Brink OIDC configuration."""
+
+    authority: str
+    client_id: str
+    response_type: str
+    scope: str
+    redirect_url: str
+
+
+OIDC_CONFIG = BrinkOidcConfig(
+    authority="https://www.brink-home.com/idsrv",
+    client_id="spa",
+    response_type="code",
+    scope="openid api role locale",
+    redirect_url="https://www.brink-home.com/app/",
+)
+
+
 class BrinkHomeCloud:
     """Interact with Brink Home through the v1.1 API."""
 
@@ -78,6 +123,10 @@ class BrinkHomeCloud:
     _OBSERVED_HINTS: set[int] = set()
 
     def __init__(self, session: ClientSession, username: str, password: str):
+        self.api_is_online: bool = False
+        self.api_error: str | None = None
+        self.api_error_code: int | None = None
+        self.api_error_type: str | None = None
         self._session = session
         self._username = username
         self._password = password
@@ -99,56 +148,182 @@ class BrinkHomeCloud:
         self._username = ""
         self._password = ""
 
-    async def get_systems(self) -> list[dict[str, Any]]:
+    async def async_get_user(self) -> BrinkUser:
+        """Return the authenticated Brink user."""
+
+        response = await self._api_request(
+            "GET",
+            f"{API_V1_URL}user",
+        )
+
+        async with response:
+            payload = cast(dict[str, object], await response.json())
+
+        _LOGGER.debug("Brink user payload: %s", payload)
+
+        return payload
+
+    async def async_update_user_general(
+        self,
+        mail_address_id: int,
+        user_role_id: int,
+        culture_info_code: str,
+    ) -> dict[str, object]:
+        """Update the authenticated user's general settings."""
+
+        response = await self._api_request(
+            "PUT",
+            f"{API_V1_URL}user/general",
+            json_data={
+                "mailAddressId": mail_address_id,
+                "userRoleId": user_role_id,
+                "cultureInfoCode": culture_info_code,
+            },
+        )
+
+        async with response:
+            payload = cast(dict[str, object], await response.json())
+
+        _LOGGER.debug("Brink user general response: %s", payload)
+
+        return payload
+
+    async def async_get_alerts(
+        self,
+        system_id: int,
+    ) -> dict[str, object]:
+        """Return alerts for a Brink system."""
+        response = await self._api_request(
+            "GET",
+            f"{API_V1_URL}systems/{system_id}/alerts/criterion",
+            params={
+                "pageIndex": 0,
+                "pageSize": 10,
+                "sortColumn": "level",
+                "sortDirection": 2,
+                "filterSpecs[0].fieldName": "isArchived",
+                "filterSpecs[0].value": "false",
+            },
+        )
+
+        async with response:
+            payload = cast(dict[str, object], await response.json())
+            _LOGGER.debug("Brink Flair alerts payload: %s", payload)
+        return payload
+
+    async def async_get_active_alerts(
+        self,
+        system_id: int,
+    ) -> list[BrinkAlert]:
+        """Return active alerts for a Brink system."""
+        data = await self.async_get_alerts(system_id)
+
+        items = data.get("items")
+        if not isinstance(items, list):
+            return []
+
+        alerts: list[BrinkAlert] = []
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            if not item.get("isActive", False):
+                continue
+
+            alerts.append(self._parse_alert(item))
+
+        return alerts
+
+    @staticmethod
+    def _parse_alert(item: dict[str, object]) -> BrinkAlert:
+        """Parse a Brink alert."""
+
+        outgoing = item.get("outgoing")
+
+        return BrinkAlert(
+            id=int(item["id"]),
+            component_id=int(item["componentId"]),
+            code=int(item["code"]),
+            level=BrinkAlertLevel(int(item["level"])),
+            is_active=bool(item["isActive"]),
+            is_archived=bool(item["isArchived"]),
+            incoming=datetime.fromisoformat(
+                str(item["incoming"])
+            ),
+            outgoing=(
+                datetime.fromisoformat(str(outgoing))
+                if outgoing
+                else None
+            ),
+            code_text=item.get("codeTextId"),
+            description=item.get("codeDescriptionTextId"),
+        )
+
+    async def get_systems(self) -> list[BrinkSystem]:
         """Return the systems visible to the current account."""
-        response1 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=1")
-        response2 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=2")
-        response3 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=3")
-        response4 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=4")
-        response5 = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=5")
-        response = await self._api_request("GET", f"{API_V1_URL}systems?pageSize=6")
+        response = await self._api_request(
+            "GET",
+            f"{API_V1_URL}systems?pageSize=5",
+        )
+
         try:
-            payload = await response1.json()
-            _LOGGER.debug("Brink Flair system payload1: %s", payload)
-            payload = await response2.json()
-            _LOGGER.debug("Brink Flair system payload2: %s", payload)
-            payload = await response3.json()
-            _LOGGER.debug("Brink Flair system payload3: %s", payload)
-            payload = await response4.json()
-            _LOGGER.debug("Brink Flair system payload4: %s", payload)
-            payload = await response5.json()
-            _LOGGER.debug("Brink Flair system payload5: %s", payload)
             payload = await response.json()
-            _LOGGER.debug("Brink Flair system payload: %s", payload)
         finally:
             await response.release()
 
-        systems: list[dict[str, Any]] = []
-        for item in payload.get("items", []):
+        _LOGGER.debug("Brink Flair system payload: %s", payload)
+
+        items = payload.get("items")
+        if not isinstance(items, list):
+            return []
+
+        systems: list[dict[str, object]] = []
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
             system_id = item.get("systemShareId")
             if system_id is None:
                 continue
-            systems.append(
-                {
-                    "name": item.get("systemName") or "Brink",
-                    "serial_number": item.get("serialNumber"),
-                    "system_id": system_id,
-                    "is_system_owner": item.get("isSystemOwner"),
-                    "is_editable": item.get("isEditable"),
-                    "access_level": item.get("accessLevel"),
-                    "owner_group_name": item.get("ownerGroupName"),
-                    "is_favorite": item.get("isFavorite"),
-                    "gateway_state": item.get("gatewayState"),
-                    "active_alert_count": item.get("activeAlertCount"),
-                    "iana_time_zone": item.get("ianaTimeZone"),
-                    "two_letter_country_code": item.get("twoLetterCountryCode"),
-                    "user_group_names": item.get("userGroupNames"),
-                    "total_count": item.get("totalCount"),
-                }
+
+            system: dict[str, object] = {
+                "name": item.get("systemName") or "Brink",
+                "serial_number": item.get("serialNumber"),
+                "system_id": system_id,
+                "is_system_owner": item.get("isSystemOwner"),
+                "is_editable": item.get("isEditable"),
+                "access_level": item.get("accessLevel"),
+                "owner_group_name": item.get("ownerGroupName"),
+                "is_favorite": item.get("isFavorite"),
+                "gateway_state": item.get("gatewayState"),
+                "active_alert_count": item.get("activeAlertCount"),
+                "iana_time_zone": item.get("ianaTimeZone"),
+                "two_letter_country_code": item.get("twoLetterCountryCode"),
+                "user_group_names": item.get("userGroupNames"),
+                "total_count": item.get("totalCount"),
+            }
+
+            systems.append(system)
+
+            _LOGGER.debug(
+                "Brink Flair system [%s] properties: %s",
+                system_id,
+                system,
             )
+            _LOGGER.info(
+                "Brink Flair system %s access_level=%s owner=%s is_system_owner=%s editable=%s",
+                system_id,
+                item.get("accessLevel"),
+                item.get("ownerGroupName"),
+                item.get("isSystemOwner"),
+                item.get("isEditable"),
+            )
+
         return systems
 
-    async def get_device(self, system_id: int) -> dict[str, dict[str, Any]]:
+    async def async_get_device(self, system_id: int) -> dict[str, dict[str, object]]:
         """Return a flattened parameter map for a system."""
         response = await self._api_request(
             "GET", f"{API_V1_URL}systems/{system_id}"
@@ -204,21 +379,63 @@ class BrinkHomeCloud:
         finally:
             await response.release()
 
+    async def async_get_settings(self) -> BrinkSettings:
+        """Return Brink portal settings."""
+
+        response = await self._api_request(
+            "GET",
+            f"{API_V1_URL}settings",
+        )
+
+        async with response:
+            payload = cast(dict[str, object], await response.json())
+
+        _LOGGER.debug("Brink settings payload: %s", payload)
+
+        return payload
+
+    async def async_get_translations(
+        self,
+        language: str = "en",
+        *,
+        translation_format: int = 2,
+        version: str = "2.4.3",
+    ) -> dict[str, str]:
+        """Return Brink translations."""
+
+        response = await self._api_request(
+            "GET",
+            f"{API_V1_URL}settings/languages/{language}",
+            params={
+                "translationFormat": translation_format,
+                "v": version,
+            },
+        )
+
+        async with response:
+            payload = await response.json()
+
+        return cast(dict[str, str], payload)
+
     async def _api_request(
         self,
         method: str,
         url: str,
         *,
-        json_data: dict[str, Any] | None = None,
+        json_data: dict[str, object] | None = None,
+        params: dict[str, object] | None = None,
     ) -> ClientResponse:
         """Perform an authenticated v1.1 API request."""
+        max_attempts = 3
+
         _LOGGER.debug(
             "Brink request %s %s timeout=%s",
             method,
             url,
             self._timeout,
         )
-        for attempt in range(3):
+
+        for attempt in range(max_attempts):
             await self._ensure_token()
 
             try:
@@ -226,6 +443,7 @@ class BrinkHomeCloud:
                     method,
                     url,
                     json=json_data,
+                    params=params,
                     timeout=ClientTimeout(total=self._timeout),
                     headers={
                         "Authorization": f"Bearer {self._access_token}",
@@ -242,21 +460,62 @@ class BrinkHomeCloud:
                             self._access_token = None
                         continue
 
-                    raise BrinkAuthError("Authentication failed after retry")
+                    self.api_is_online = False
+                    self.api_error_code = 401
+                    self.api_error_type = "http"
+                    self.api_error = "HTTP 401: Authentication failed"
+
+                    raise BrinkAuthError(
+                        "Authentication failed after retry"
+                    )
 
                 try:
                     response.raise_for_status()
-                except ClientResponseError:
+                except ClientResponseError as err:
                     await response.release()
-                    raise
+
+                    raise BrinkApiError(
+                        f"HTTP {err.status}: "
+                        f"{err.message or 'HTTP request failed'}",
+                        error_code=err.status,
+                        error_type="http",
+                    ) from err
+
+                # The complete HTTP request was successful.
+                self.api_is_online = True
+                self.api_error = None
+                self.api_error_code = None
+                self.api_error_type = None
+
                 return response
 
-            except (ClientError, TimeoutError) as err:
-                if attempt < 2:
+            except ClientConnectorError as err:
+                self.api_is_online = False
+                self.api_error = str(err)
+                self.api_error_code = None
+                self.api_error_type = "connection"
+
+                _LOGGER.warning(
+                    "Brink connection/DNS error: %s %s (%s)",
+                    method,
+                    url,
+                    err,
+                )
+
+                raise BrinkApiError(
+                    f"Unable to connect to Brink API: {method} {url}"
+                ) from err
+
+            except (
+                ClientConnectionError,
+                ServerDisconnectedError,
+                TimeoutError,
+            ) as err:
+                if attempt < max_attempts - 1:
                     _LOGGER.debug(
                         "Brink request failed (%s/%s): %s %s (%s)",
                         attempt + 1,
-                        3,
+                        max_attempts,
                         method,
                         url,
                         err,
@@ -265,15 +524,21 @@ class BrinkHomeCloud:
                     _LOGGER.warning(
                         "Brink request failed (%s/%s): %s %s (%s)",
                         attempt + 1,
-                        3,
+                        max_attempts,
                         method,
                         url,
                         err,
                     )
 
-                if attempt == 2:
+                if attempt == max_attempts - 1:
+                    self.api_is_online = False
+                    self.api_error = str(err)
+                    self.api_error_code = None
+                    self.api_error_type = "connection"
+
                     raise BrinkApiError(
-                        f"Brink request failed after 3 attempts: {method} {url}"
+                        f"Brink request failed after {max_attempts} attempts: "
+                        f"{method} {url}"
                     ) from err
 
                 await asyncio.sleep(2)
@@ -416,7 +681,7 @@ class BrinkHomeCloud:
             "code_verifier": code_verifier,
         }
 
-        async with async_timeout.timeout(20):
+        async with async_timeout.timeout(30):
             response = await self._session.post(
                 OIDC_TOKEN_URL,
                 data=token_data,
@@ -465,7 +730,7 @@ class BrinkHomeCloud:
                         f"Refresh token rejected (HTTP {response.status})"
                     )
                 payload = await response.json()
-                _LOGGER.debug("Brink Flair refresh access token payload: %s", payload)
+                # _LOGGER.debug("Brink Flair refresh access token payload: %s", payload)
                 await response.release()
         except (ClientError, asyncio.TimeoutError) as ex:
             self._refresh_token = None
@@ -480,6 +745,12 @@ class BrinkHomeCloud:
         expires_in = int(payload.get("expires_in", 3599))
         self._token_expiry = time.monotonic() + expires_in - 60
         self._refresh_token = payload.get("refresh_token", self._refresh_token)
+
+        _LOGGER.debug(
+            "Brink token refreshed successfully: expires_in=%s refresh_token=%s",
+            expires_in,
+            bool(self._refresh_token),
+        )
 
     async def _follow_redirects_for_code(
         self,
@@ -560,33 +831,35 @@ class BrinkHomeCloud:
                         else []
                     )
 
-                    if options:
-                        _LOGGER.debug(
-                            "Parameter %s (%s) current_value=%s options=%s read_write=%s "
-                            "min=%s max=%s step_width=%s decimals=%s "
-                            "nr_options=%s",
-                            key,
-                            numeric_id,
-                            param.get("value"),
-                            options,
-                            param.get("readWrite"),
-                            param.get("minValue"),
-                            param.get("maxValue"),
-                            param.get("stepWidth"),
-                            param.get("decimals"),
-                            len(options),
-                        )
+                    # if options:
+                    #    """Show parameter with options"""
+                    #    _LOGGER.debug(
+                    #        "Parameter %s (%s) current_value=%s options=%s read_write=%s "
+                    #        "min=%s max=%s step_width=%s decimals=%s "
+                    #        "nr_options=%s",
+                    #        key,
+                    #        numeric_id,
+                    #        param.get("value"),
+                    #        options,
+                    #        param.get("readWrite"),
+                    #        param.get("minValue"),
+                    #        param.get("maxValue"),
+                    #        param.get("stepWidth"),
+                    #        param.get("decimals"),
+                    #        len(options),
+                    #    )
 
                     value_state = param.get("valueState")
 
-                    if value_state not in (None, 0):
-                        _LOGGER.info(
-                            "Parameter: %s (%s) valueState=%s value=%s",
-                            key,
-                            numeric_id,
-                            value_state,
-                            param.get("value"),
-                        )
+                    # if value_state not in (None, 0):
+                    #    """Show valid values"""
+                    #    _LOGGER.info(
+                    #        "Parameter: %s (%s) valueState=%s value=%s",
+                    #        key,
+                    #        numeric_id,
+                    #        value_state,
+                    #        param.get("value"),
+                    #    )
 
                     if isinstance(value_state, int) and value_state not in BrinkHomeCloud._OBSERVED_VALUE_STATES:
                         BrinkHomeCloud._OBSERVED_VALUE_STATES.add(value_state)
@@ -727,3 +1000,26 @@ class BrinkHomeCloud:
             and parsed.hostname == _TRUSTED_HOST
             and parsed.port in (None, 443)
         )
+
+
+"""
+ENDPOINTS = {
+    "settings": f"{API_V1_URL}settings",
+GET    user
+PUT    user/general
+PATCH  user/password
+PUT    user/expert-role
+GET    user/edit-form
+GET    user/expert-role/edit-form
+DELETE user
+POST   systems
+GET    systems/{id}
+GET    systems/{id}/properties
+PATCH  systems/{id}/unlock
+GET    systems/{id}/unlock-form
+GET    systems/{id}/changelogs/description
+GET    systems/{id}/alerts
+GET    systems/{id}/firmware
+GET    settings/gateway/master-data-descriptions
+}
+"""

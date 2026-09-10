@@ -37,6 +37,9 @@ from .entity import BrinkHomeDeviceEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+CN1_EXTERNAL_LEVEL = "4"
+CN1_EXTERNAL_LABEL = "CN1"
+
 
 @dataclass(frozen=True, kw_only=True)
 class BrinkSelectEntityDescription(SelectEntityDescription):
@@ -267,6 +270,7 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
                 "1": "mdi:fan-speed-1",
                 "2": "mdi:fan-speed-2",
                 "3": "mdi:fan-speed-3",
+                "4": "mdi:connection"
             }.get(value, "mdi:fan")
 
         return self.entity_description.icon
@@ -319,6 +323,7 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         # These attibutes are NOT available to select entity, if they do it should not be a select entity
         for key in (
             "default_value",
+            "raw_value",
             "unit_of_measure",
             "min_value",
             "max_value",
@@ -345,6 +350,11 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         option: str,
     ) -> None:
         """Select an option."""
+        if option == "CN1":
+            raise HomeAssistantError(
+                "CN1 is controlled by an external input."
+            )
+
         param = self.data
 
         if param is None:
@@ -384,12 +394,14 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         current_value = str(param.get("value"))
 
-        label_map = self.entity_description.label_map
+        if (
+            self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL
+            and current_value == CN1_EXTERNAL_LEVEL
+        ):
+            return CN1_EXTERNAL_LABEL
 
-        if label_map:
-            result = label_map.get(current_value)
-
-            return result
+        if (label_map := self.entity_description.label_map) is not None:
+            return label_map.get(current_value)
 
         return next(
             (
@@ -416,37 +428,53 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         if param is None:
             return []
 
-        return [
+        options = [
             str(option["label"])
             for option in param.get("options", [])
         ]
+
+        if self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL and self.current_option == "CN1":
+            options.append("CN1")
+
+        return options
 
     @property
     def available(self) -> bool:
         """Return if entity is available."""
 
-        device = next(iter((self.coordinator.data or {}).values()), {})
-        parameters = device.get("parameters", {})
+        if not super().available:
+            return False
 
-        _LOGGER.debug(
-            "gateway_state available: super=%s data=%s current_value=%s",
-            super().available,
-            self.data,
-            self.current_option,
+        device = next(
+            iter((self.coordinator.data or {}).values()),
+            None,
         )
+        if device is None:
+            return False
+
+        parameters = device.parameters
+
+        # _LOGGER.debug(
+        #    "gateway_state available: super=%s data=%s current_value=%s",
+        #    super().available,
+        #    self.data,
+        #    self.current_option,
+        # )
 
         if self.entity_description.parameter_key == "rh_sensor_sensitivity":
-            rh_sensor = int(
-                parameters.get("ebus_co2_sensor_status", {})
-                .get("value")
-            )
-            return (rh_sensor == 1)
+            rh_sensor_value = parameters.get("ebus_co2_sensor_status", {}).get("value")
+
+            try:
+                rh_sensor = int(rh_sensor_value)
+            except (TypeError, ValueError):
+                return False
+
+            return rh_sensor == 1
 
         param = self.data
 
         return (
-            super().available
-            and param is not None
+            param is not None
             and param.get("value_state") != 5
         )
 
@@ -467,9 +495,7 @@ async def async_setup_entry(
         )
         for system_id, device in (coordinator.data or {}).items()
         for description in SELECT_DESCRIPTIONS
-        if device.get("parameters", {}).get(
-            description.parameter_key
-        )
+        if device.parameters.get(description.parameter_key) is not None
     ]
 
     async_add_entities(entities)

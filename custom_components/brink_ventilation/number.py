@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from enum import IntEnum
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -330,6 +331,11 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
 )
 
 
+class ValueState(IntEnum):
+    """Represents the state of a sensor value."""
+    INVALID = 5
+
+
 class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
     """Representation of a Brink number."""
 
@@ -501,15 +507,21 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
         """Return if entity is available."""
 
         device = next(iter((self.coordinator.data or {}).values()), {})
-        parameters = device.get("parameters", {})
+        parameters = device.parameters
 
-        _LOGGER.debug(
-            "gateway_state available: key=%s super=%s data=%s raw=%s",
-            self.entity_description.parameter_key,
-            super().available,
-            self.data,
-            self.value,
-        )
+        param = self.data
+
+        if (
+            param is None
+            or param.get("value_state") == ValueState.INVALID
+        ):
+            _LOGGER.debug(
+                "gateway_state available: key=%s super=%s data=%s raw=%s",
+                self.entity_description.parameter_key,
+                super().available,
+                self.data,
+                self.value,
+            )
 
         if self.entity_description.parameter_key == "ventilation_percentage":
             return True
@@ -651,7 +663,7 @@ async def async_setup_entry(
         )
         for system_id, device in (coordinator.data or {}).items()
         for description in NUMBER_DESCRIPTIONS
-        if device.get("parameters", {}).get(description.parameter_key)
+        if device.parameters.get(description.parameter_key)
     ]
 
     async_add_entities(entities)

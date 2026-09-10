@@ -8,6 +8,8 @@ from aiohttp import ClientError, ClientSession
 
 _LOGGER = logging.getLogger(__name__)
 
+HOST = "brink.local"
+
 
 class BrinkHomeLocalError(Exception):
     """Raised when communication with the local Brink device fails."""
@@ -19,7 +21,7 @@ class BrinkHomeLocalClient:
     def __init__(
         self,
         session: ClientSession,
-        host: str,
+        host: str = "brink.local",
         *,
         port: int = 80,
     ) -> None:

@@ -27,23 +27,36 @@ from .const import (
     PARAM_RH_SENSOR_STATUS,
 )
 from .entity import BrinkHomeDeviceEntity
+from .models import BrinkAlertLevel
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
-class BrinkBinarySensorDescription(
-    BinarySensorEntityDescription
-):
+class BrinkBinarySensorDescription(BinarySensorEntityDescription):
     """Describe a Brink binary sensor."""
+
     parameter_key: str
-    data_fn: Callable[[dict[str, object] | None], dict[str, object] | None] | None = None
-    value_fn: Callable[[dict[str, object]], bool | None] | None = None
-    attr_fn: Callable[[dict[str, object]], dict[str, object] | None] | None = None
-    icon_fn: Callable[[bool | None], str | None] | None = None
-    available_fn: Callable[
-        [dict[str, object]],
+    requires_parameter: bool = True
+
+    value_fn: Callable[
+        [BrinkHomeBinarySensorEntity],
         bool | None,
+    ] | None = None
+
+    attr_fn: Callable[
+        [BrinkHomeBinarySensorEntity],
+        dict[str, object],
+    ] | None = None
+
+    icon_fn: Callable[
+        [BrinkHomeBinarySensorEntity],
+        str | None,
+    ] | None = None
+
+    available_fn: Callable[
+        [BrinkHomeBinarySensorEntity],
+        bool,
     ] | None = None
 
 
@@ -74,14 +87,6 @@ class BrinkHomeBinarySensorEntity(
         self.entity_description = description
 
     @property
-    def old_unique_id(self) -> str:
-        """Return a unique ID."""
-        return (
-            f"{DOMAIN}_{self.system_id}_"
-            f"{self.parameter_key}_binary_sensor"
-        )
-
-    @property
     def unique_id(self) -> str:
         """Return a unique ID."""
         return (
@@ -92,9 +97,10 @@ class BrinkHomeBinarySensorEntity(
     @property
     def icon(self) -> str | None:
         """Return the entity icon."""
+        icon_fn = self.entity_description.icon_fn
 
-        if self.entity_description.icon_fn is not None:
-            return self.entity_description.icon_fn(self.is_on)
+        if icon_fn is not None:
+            return icon_fn(self)
 
         return self.entity_description.icon
 
@@ -102,29 +108,15 @@ class BrinkHomeBinarySensorEntity(
     def is_on(self) -> bool | None:
         """Return sensor state."""
 
-        _LOGGER.debug(
-            "Gateway data for %s: %s",
-            self.system_id,
-            self._entity_data,
-        )
+        value_fn = self.entity_description.value_fn
 
-        data = self._entity_data
+        if value_fn is not None:
+            return value_fn(self)
+
+        data = self.data
 
         if data is None:
             return None
-
-        if self.entity_description.value_fn is not None:
-            result = self.entity_description.value_fn(data)
-
-            if self.entity_description.key == "gateway_state":
-                _LOGGER.debug(
-                    "Gateway state=%s online=%s result=%s",
-                    data.get("value"),
-                    GATEWAY_STATE_ONLINE,
-                    result,
-                )
-
-            return result
 
         value = data.get("value")
 
@@ -137,79 +129,92 @@ class BrinkHomeBinarySensorEntity(
     def available(self) -> bool:
         """Return if entity is available."""
 
-        data = self._entity_data
+        available_fn = self.entity_description.available_fn
+        if available_fn is not None:
+            return bool(available_fn(self))
 
-        if data is None:
+        if not self.entity_description.requires_parameter:
+            return True
+
+        if not super().available:
             return False
 
-        # Override availability for system/device entities.
-        if self.entity_description.available_fn is not None:
-            return bool(self.entity_description.available_fn(data))
+        data = self.data
 
         return (
-            super().available
-            and (
-                data.get("value_state") is None
-                or data.get("value_state") != 5
-            )
+            data is not None
+            and data.get("value_state") != 5
         )
 
     @property
     def extra_state_attributes(self) -> dict[str, object]:
         """Return extra state attributes."""
-
-        data = self._entity_data or {}
-
-        attributes = {
+        attributes: dict[str, object] = {
             "key": _debug_value(self.entity_description.key),
-            "translation_key": _debug_value(self.entity_description.translation_key),
-            "name": _debug_value(data.get("name")),
-            "raw_name": _debug_value(data.get("raw_name")),
-            "value": _debug_value(data.get("value")),
-            "value_state": _debug_value(data.get("value_state")),
-            "default_value": _debug_value(data.get("default_value")),
-            "numeric_id": _debug_value(data.get("numeric_id")),
-            "read_write": _debug_value(data.get("read_write")),
-            "control_type": _debug_value(data.get("control_type")),
-            "value_id": _debug_value(data.get("value_id")),
-            "list_items": _debug_value(data.get("list_items")),
-            "component_id": _debug_value(data.get("component_id")),
-            "options": data.get("options"),
-            "options_str": _debug_value(data.get("options")),
+            "translation_key": _debug_value(
+                self.entity_description.translation_key,
+            ),
         }
 
-        # binary sensors should not have this keys but if they do they are in the wrong sensor section (select or number)
-        for key in (
-            "min_value",
-            "max_value",
-            "step_width",
-            "decimals",
-            "unit_of_measure",
-        ):
-            if data.get(key) is not None:
-                attributes[key] = data[key]
+        data = self.data
+        if data is not None:
+            attributes.update(
+                {
+                    "name": _debug_value(data.get("name")),
+                    "raw_name": _debug_value(data.get("raw_name")),
+                    "value": _debug_value(data.get("value")),
+                    "value_state": _debug_value(data.get("value_state")),
+                    "default_value": _debug_value(data.get("default_value")),
+                    "numeric_id": _debug_value(data.get("numeric_id")),
+                    "read_write": _debug_value(data.get("read_write")),
+                    "control_type": _debug_value(data.get("control_type")),
+                    "value_id": _debug_value(data.get("value_id")),
+                    "list_items": _debug_value(data.get("list_items")),
+                    "component_id": _debug_value(data.get("component_id")),
+                    "options": data.get("options"),
+                    "options_str": _debug_value(data.get("options")),
+                }
+            )
 
-        if self.entity_description.attr_fn is not None:
-            attributes: dict[str, object] = {
-                "key": _debug_value(self.entity_description.key),
-                "translation_key": _debug_value(self.entity_description.translation_key),
-                "value": _debug_value(data.get("value"))
-            }
-            custom_attributes = self.entity_description.attr_fn(data)
+            # Binary sensors should not expose these. If present they
+            # probably belong to a Number or Select entity.
+            for key in (
+                "min_value",
+                "max_value",
+                "step_width",
+                "decimals",
+                "unit_of_measure",
+            ):
+                if data.get(key) is not None:
+                    attributes[key] = data[key]
 
+        attr_fn = self.entity_description.attr_fn
+        if attr_fn is not None:
+            custom_attributes = attr_fn(self)
             if custom_attributes:
                 attributes.update(custom_attributes)
 
         return attributes
 
     @property
-    def _entity_data(self) -> dict[str, object] | None:
-        """Return the data source for this entity."""
+    def gateway_state(self) -> int | None:
+        """Return the gateway state."""
+        device = self._device
+        return None if device is None else device.gateway_state
 
-        if self.entity_description.data_fn is not None:
-            return self.entity_description.data_fn(self._device)
+    @property
+    def device_is_online(self) -> bool | None:
+        """Return whether the device is online."""
+        device = self._device
 
-        return self.data
+        return None if device is None else device.device_is_online
+
+    @property
+    def gateway_type_id(self) -> int | None:
+        """Return the gateway type ID."""
+        device = self._device
+
+        return None if device is None else device.gateway_type_id
 
 
 def _debug_value(value: object) -> str:
@@ -222,60 +227,46 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BrinkBinarySensorDescription, ...] = (
         key="gateway_status",
         translation_key="gateway_status",
         parameter_key="gateway_status",
+        requires_parameter=False,
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        data_fn=lambda device: (
-            {
-                "value": device.get("gateway_state"),
-                "device_is_online": device.get("device_is_online"),
-                "gateway_type_id": device.get("gateway_type_id"),
-            }
-            if device is not None
-            else None
-        ),
-        value_fn=lambda data: bool(str(data.get("value")) == str(GATEWAY_STATE_ONLINE)),
-        attr_fn=lambda data: {
-            "gateway_state": data.get("value"),
-            "device_is_online": data.get("device_is_online"),
-            "gateway_type_id": data.get("gateway_type_id"),
+        value_fn=lambda entity: entity.gateway_state == GATEWAY_STATE_ONLINE,
+        attr_fn=lambda entity: {
+            "gateway_state": entity.gateway_state,
+            "device_is_online": entity.device_is_online,
+            "gateway_type_id": entity.gateway_type_id,
             "gateway_state_label": GATEWAY_STATE_LABELS.get(
-                int(data.get("value", -1)),
+                entity.gateway_state,
                 "unknown",
             ),
         },
-        icon_fn=lambda is_on: (
+        available_fn=lambda entity: entity.coordinator.last_update_success,
+        icon_fn=lambda entity: (
             "mdi:connection"
-            if is_on
+            if entity.is_on
             else "mdi:lan-disconnect"
         ),
-        available_fn=lambda data: True
     ),
     BrinkBinarySensorDescription(
         key="device_online",
         translation_key="device_online",
         parameter_key="device_online",
+        requires_parameter=False,
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        data_fn=lambda device: (
-            {
-                "value": device.get("device_is_online"),
-            }
-            if device is not None
-            else None
-        ),
-        value_fn=lambda data: data.get("value"),
-        icon_fn=lambda is_on: (
+        value_fn=lambda entity: entity.device_is_online,
+        available_fn=lambda entity: entity.coordinator.last_update_success,
+        icon_fn=lambda entity: (
             "mdi:connection"
-            if is_on
+            if entity.is_on
             else "mdi:lan-disconnect"
         ),
-        available_fn=lambda data: True
     ),
     BrinkBinarySensorDescription(
         key=PARAM_FILTER_STATUS,
-        translation_key="filter_need_change",
+        translation_key="status_filter_message",
         parameter_key=PARAM_FILTER_STATUS,
         icon="mdi:air-filter",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda param: str(param.get("value")) == "1",
+        value_fn=lambda entity: entity.parameter_value == "1"
     ),
     BrinkBinarySensorDescription(
         key=PARAM_RH_SENSOR_STATUS,
@@ -326,6 +317,72 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BrinkBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
     ),
+    BrinkBinarySensorDescription(
+        key="blocking_error",
+        translation_key="blocking_error",
+        parameter_key="blocking_error",
+        requires_parameter=False,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        icon="mdi:alert-octagon",
+        value_fn=lambda entity: entity.coordinator.has_blocking_error,
+        attr_fn=lambda entity: {
+            "alert_count": len(entity.coordinator.active_alerts),
+            "highest_level": (
+                max(
+                    (alert.level for alert in entity.coordinator.active_alerts),
+                    default=BrinkAlertLevel.INFORMATION,
+                ).name
+            ),
+            "highest_level_value": max(
+                (int(alert.level) for alert in entity.coordinator.active_alerts),
+                default=BrinkAlertLevel.INFORMATION,
+            ),
+            "alerts": [
+                {
+                    "id": alert.id,
+                    "component_id": alert.component_id,
+                    "code": alert.code,
+                    "level": alert.level.name,
+                    "level_value": int(alert.level),
+                    "is_active": alert.is_active,
+                    "is_archived": alert.is_archived,
+                    "incoming": alert.incoming.isoformat(),
+                    "outgoing": (
+                        alert.outgoing.isoformat()
+                        if alert.outgoing is not None
+                        else None
+                    ),
+                    "code_text": alert.code_text,
+                    "description": alert.description,
+                }
+                for alert in entity.coordinator.active_alerts
+            ],
+        },
+    ),
+    BrinkBinarySensorDescription(
+        key="api_online",
+        translation_key="api_online",
+        parameter_key="api_online",
+        requires_parameter=False,
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        value_fn=lambda entity: entity.api_is_online,
+        attr_fn=lambda entity: (
+            {
+                "api_error": entity.api_error,
+                "api_error_code": entity.api_error_code,
+                "api_error_type": entity.api_error_type,
+            }
+            if not entity.api_is_online
+            else {}
+        ),
+        available_fn=lambda entity: True,
+        icon_fn=lambda entity: (
+            "mdi:cloud-check"
+            if entity.is_on
+            else "mdi:cloud-off-outline"
+        ),
+        entity_category=EntityCategory.DIAGNOSTIC,
+    )
 )
 
 
@@ -342,24 +399,10 @@ async def async_setup_entry(
 
     for system_id, device in (coordinator.data or {}).items():
         for description in BINARY_SENSOR_DESCRIPTIONS:
-            if description.data_fn is not None:
-                entities.append(
-                    BrinkHomeBinarySensorEntity(
-                        client,
-                        coordinator,
-                        system_id,
-                        description,
-                    )
-                )
-                continue
-
-            parameters = device.get("parameters", {})
-            _LOGGER.debug(
-                "ebus_co2_sensor_status exists=%s value=%s",
-                "ebus_co2_sensor_status" in parameters,
-                parameters.get("ebus_co2_sensor_status"),
-            )
-            if parameters.get(description.parameter_key) is not None:
+            if (
+                not description.requires_parameter
+                or device.parameters.get(description.parameter_key) is not None
+            ):
                 entities.append(
                     BrinkHomeBinarySensorEntity(
                         client,
@@ -370,15 +413,3 @@ async def async_setup_entry(
                 )
 
     async_add_entities(entities)
-
-
-def _gateway_state_value(device: dict | None) -> int | None:
-    """Normalize the Brink gateway state."""
-    if device is None:
-        return None
-
-    state = device.get("gateway_state")
-    try:
-        return state
-    except (TypeError, ValueError):
-        return None

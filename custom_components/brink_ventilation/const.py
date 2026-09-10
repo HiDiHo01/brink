@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 DOMAIN = "brink_ventilation"
 DEFAULT_NAME = "Brink"
 DEFAULT_MODEL = "Brink ventilation"
@@ -11,12 +13,23 @@ DATA_COORDINATOR = "coordinator"
 
 DEFAULT_SCAN_INTERVAL = 30
 
-API_V1_URL = "https://www.brink-home.com/portal/api/v1.1/"
+API_BASE = "https://www.brink-home.com"
+API_V1_URL = f"{API_BASE}/portal/api/v1.1/"
 
-OIDC_AUTH_URL = "https://www.brink-home.com/idsrv/connect/authorize"
-OIDC_TOKEN_URL = "https://www.brink-home.com/idsrv/connect/token"
+ALERTS_URL = (
+    f"{API_V1_URL}/systems/{{system_id}}/alerts/criterion"
+    "?pageIndex=0"
+    "&pageSize=10"
+    "&sortColumn=level"
+    "&sortDirection=2"
+    "&filterSpecs%5B0%5D.fieldName=isArchived"
+    "&filterSpecs%5B0%5D.value=false"
+)
+
+OIDC_AUTH_URL = f"{API_BASE}/idsrv/connect/authorize"
+OIDC_TOKEN_URL = f"{API_BASE}/idsrv/connect/token"
 OIDC_CLIENT_ID = "spa"
-OIDC_REDIRECT_URI = "https://www.brink-home.com/app/"
+OIDC_REDIRECT_URI = f"{API_BASE}/app/"
 OIDC_SCOPE = "openid api role locale"
 
 MODE_AUTOMATIC = "automatic"
@@ -25,11 +38,43 @@ MODE_HOLIDAY = "holiday"
 MODE_PARTY = "party"
 MODE_NIGHT = "night_ventilation"
 
+ACCESS_LEVEL_MAP: dict[int, str] = {
+    4: "User (Read)",
+    12: "User (Read/Write)",
+    16: "User+ (Read)",
+    48: "User+ (Read/Write)",
+    256: "Expert (Read)",
+    768: "Expert (Read/Write)",
+    16384: "Manufacturer (Read)",
+    49152: "Manufacturer (Read/Write)",
+}
+
+ALERTS_URL_PARAMS = {
+    "pageIndex": 0,
+    "pageSize": 10,
+    "sortColumn": "level",
+    "sortDirection": 2,
+    "filterSpecs[0].fieldName": "isArchived",
+    "filterSpecs[0].value": "false",
+}
+
+ACCESS_LEVELS_FOR_SYSTEM_SHARE: dict[int, str] = {
+    4: "accessLevelUserRead",
+    12: "accessLevelUserReadWrite",
+    16: "accessLevelUserPlusRead",
+    48: "accessLevelUserPlusReadWrite",
+    256: "accessLevelExpertRead",
+    768: "accessLevelExpertReadWrite",
+    16384: "accessLevelManufacturerRead",
+    49152: "accessLevelManufacturerReadWrite",
+}
+
 LEVEL_LABELS = {
     0: "off",
     1: "low",
     2: "medium",
     3: "high",
+    4: "CN1",
 }
 
 VENTILATION_LEVEL_LABELS = {
@@ -37,10 +82,17 @@ VENTILATION_LEVEL_LABELS = {
     1: "Low",
     2: "Medium",
     3: "High",
+    4: "CN1",
 }
 
 # when changing gateway password within brink device the portal will be in locked state untill you (re)logged in to the portal again.
 GATEWAY_STATE_LABELS: dict[int, str] = {
+    0: "locked",
+    1: "offline",
+    2: "online",
+}
+
+GATEWAY_STATE_MAP = {
     0: "locked",
     1: "offline",
     2: "online",
@@ -237,11 +289,6 @@ GATEWAY_STATE_LABELS: dict[int, str] = {
 FILTER_STATUS_LABELS: dict[int, str] = {
     0: "not_dirty",
     1: "dirty",
-}
-
-CONTACT_TYPE_LABELS: dict[str, str] = {
-    "0": "Normaly open contact",
-    "1": "NC contact (normally closed)",
 }
 
 CONTACT_TYPE_LABELS: dict[str, str] = {
@@ -899,3 +946,29 @@ READ_WRITE_MAP = {
 
 MODE_MANUAL_VALUE = "1"
 WRITE_VALUE_STATE = 0
+
+
+@dataclass(frozen=True, slots=True)
+class BrinkError:
+    """Describe a Brink error."""
+
+    code: str
+    blocking: bool
+    title: str
+    description: str
+
+
+ERRORS: dict[str, BrinkError] = {
+    "E1124": BrinkError(
+        code="E1124",
+        blocking=True,
+        title="Exhaust fan",
+        description="No communication",
+    ),
+    "E1125": BrinkError(
+        code="E1125",
+        blocking=True,
+        title="Supply fan",
+        description="No communication",
+    ),
+}

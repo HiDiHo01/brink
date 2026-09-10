@@ -31,6 +31,38 @@
       }
     }
   },
+  "services": {
+    "set_airflow": {
+      "name": "Luchtstroom instellen",
+      "description": "Stel de gewenste luchtstroom in kubieke meter per uur in.",
+      "fields": {
+        "airflow": {
+          "name": "Luchtstroom",
+          "description": "Gewenste luchtstroom."
+        }
+      }
+    },
+    "set_level": {
+      "name": "Ventilatieniveau instellen",
+      "description": "Stel het Brink-ventilatieniveau in.",
+      "fields": {
+        "level": {
+          "name": "Ventilatieniveau",
+          "description": "Selecteer het ventilatieniveau."
+        }
+      }
+    }
+  },
+  "selector": {
+    "brink_level": {
+      "options": {
+        "0": "Uit",
+        "1": "Laag",
+        "2": "Gemiddeld",
+        "3": "Hoog"
+      }
+    }
+  },
   "entity_component": {
     "fan": {
       "preset_mode": {
@@ -193,6 +225,7 @@
           "Fan at setting 2": "Ventilator op stand 2",
           "Fan at setting 3": "Ventilator op stand 3",
           "Fan at setting 0": "Ventilator op stand 0",
+          "Fan at step 0": "Ventilator op stand 0",
           "Fan according to multiple switch": "Ventilator volgens meerstandenschakelaar",
           "Fan runs at absolute maximum": "Ventilator op absoluut maximum",
           "No exhaust fan control": "Geen regeling afvoerventilator"
@@ -417,6 +450,12 @@
       "preheater_power":{
         "name": "Vermogen voorverwarmer"
       },
+      "v1_analog_input": {
+        "name": "Analoge ingang 1"
+      },
+      "v2_analog_input": {
+        "name": "Analoge ingang 2"
+      },
       "ventilation_level": {
         "name": "Ventilatiestand",
         "state": {
@@ -637,9 +676,32 @@
           "offline": "Offline",
           "online": "Online"
         }
+      },
+        "cabinet_sound_power": {
+        "name": "Geluidsvermogen kastafstraling"
+      },
+      "supply_sound_power": {
+        "name": "Geluidsvermogen kanaal naar woning"
+      },
+      "exhaust_sound_power": {
+        "name": "Geluidsvermogen kanaal uit woning"
       }
     },
     "binary_sensor": {
+      "api_online": {
+        "name": "API status",
+        "state": {
+          "off": "Offline",
+          "on": "Online"
+        }
+      },
+      "blocking_error": {
+        "name": "Blokkerende fout",
+        "state": {
+          "off": "Geen blokkerende fout",
+          "on": "Blokkerende fout"
+        }
+      },
       "gateway_status": {
         "name": "Gateway status",
         "state": {

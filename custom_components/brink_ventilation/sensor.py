@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from enum import IntEnum
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -17,11 +19,13 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
+    UnitOfSoundPressure,
     UnitOfTemperature,
     UnitOfTime,
     UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.typing import StateType
 
 from .const import (
     ACTIVE_CONTROL_STATUS_LABELS,
@@ -30,7 +34,6 @@ from .const import (
     DATA_CLIENT,
     DATA_COORDINATOR,
     DOMAIN,
-    FILTER_STATUS_LABELS,
     FROST_PROTECTION_STATUS_LABELS,
     GATEWAY_STATE_LABELS,
     GEOTHERMAL_HEAT_EXCHANGER_LABELS,
@@ -46,8 +49,6 @@ from .const import (
     PARAM_EXHAUST_AIR_FLOW,
     PARAM_EXHAUST_AIR_PRESSURE,
     PARAM_EXHAUST_TEMP,
-    PARAM_FILTER_MESSAGE,
-    PARAM_FILTER_STATUS,
     PARAM_FRESH_AIR_TEMP,
     PARAM_FROST_PROTECTION_STATUS,
     PARAM_HUMIDITY,
@@ -70,21 +71,36 @@ from .const import (
     VENTILATION_LEVEL_LABELS,
 )
 from .entity import BrinkHomeDeviceEntity
+from .sound import (
+    CABINET_SOUND_POWER_COEFFICIENTS,
+    EXHAUST_SOUND_POWER_COEFFICIENTS,
+    SUPPLY_SOUND_POWER_COEFFICIENTS,
+    estimate_sound_power,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+class ValueState(IntEnum):
+    """Represents the state of a sensor value."""
+    INVALID = 5
+
+
+# @dataclass(frozen=True)
+@dataclass(slots=True, frozen=True, kw_only=True)
 class BrinkSensorDescription(SensorEntityDescription):
     """Describe a Brink sensor entity."""
 
-    parameter_key: str = ""
+    parameter_key: str
     is_enum: bool = False
     is_device_attribute: bool = False
     required_value_state: int | None = None
-    value_map: dict[int, str] | None = None
+    # value_map: dict[int, str] | None = None
+    value_map: Mapping[int, str] | None = None
     enabled_value_state: int | None = None
-    _attr_has_entity_name = True
+    # _attr_has_entity_name = True
+    value_fn: Callable[[BrinkHomeSensorEntity], StateType | None] | None = None
+    attr_fn: Callable[[BrinkHomeSensorEntity], Mapping[str, object] | None] | None = None
 
 
 SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
@@ -226,14 +242,6 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     BrinkSensorDescription(
-        key="filter_message",
-        translation_key="filter_message",
-        parameter_key=PARAM_FILTER_MESSAGE,
-        icon="mdi:air-filter",
-        state_class=SensorStateClass.MEASUREMENT,
-        entity_category=EntityCategory.DIAGNOSTIC,
-    ),
-    BrinkSensorDescription(
         key=PARAM_REMAINING_DURATION,
         translation_key="remaining_duration",
         parameter_key=PARAM_REMAINING_DURATION,
@@ -338,15 +346,6 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:thermometer",
         entity_registry_enabled_default=False,
-    ),
-    BrinkSensorDescription(
-        key=PARAM_FILTER_STATUS,
-        translation_key="filter_status",
-        parameter_key=PARAM_FILTER_STATUS,
-        icon="mdi:air-filter",
-        device_class=SensorDeviceClass.ENUM,
-        is_enum=True,
-        value_map=FILTER_STATUS_LABELS,
     ),
     BrinkSensorDescription(
         key=PARAM_FROST_PROTECTION_STATUS,
@@ -579,19 +578,73 @@ SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
         is_device_attribute=True,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    BrinkSensorDescription(
+        key="cabinet_sound_power",
+        translation_key="cabinet_sound_power",
+        parameter_key="cabinet_sound_power",
+        icon="mdi:speaker",
+        native_unit_of_measurement=UnitOfSoundPressure.WEIGHTED_DECIBEL_A,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda entity: entity.cabinet_sound_power,
+        attr_fn=lambda entity: {
+            "average_airflow": entity.cabinet_airflow,
+            "average_pressure": entity.cabinet_pressure,
+            "supply_airflow": entity.supply_airflow,
+            "supply_pressure": entity.supply_pressure,
+            "exhaust_airflow": entity.exhaust_airflow,
+            "exhaust_pressure": entity.exhaust_pressure,
+            "calculation": "2D second-order polynomial regression",
+        },
+    ),
+    BrinkSensorDescription(
+        key="supply_sound_power",
+        translation_key="supply_sound_power",
+        parameter_key="supply_sound_power",
+        icon="mdi:speaker",
+        native_unit_of_measurement=UnitOfSoundPressure.WEIGHTED_DECIBEL_A,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda entity: entity.supply_sound_power,
+        attr_fn=lambda entity: {
+            "airflow": entity.supply_airflow,
+            "pressure": entity.supply_pressure,
+            "method": "2D polynomial regression",
+        },
+    ),
+    BrinkSensorDescription(
+        key="exhaust_sound_power",
+        translation_key="exhaust_sound_power",
+        parameter_key="exhaust_sound_power",
+        icon="mdi:speaker",
+        native_unit_of_measurement=UnitOfSoundPressure.WEIGHTED_DECIBEL_A,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda entity: entity.exhaust_sound_power,
+        attr_fn=lambda entity: {
+            "airflow": entity.exhaust_airflow,
+            "pressure": entity.exhaust_pressure,
+            "method": "2D polynomial regression",
+        },
+    ),
 )
 
 
 def _should_create_sensor(device: dict, description: BrinkSensorDescription) -> bool:
     """Return True when the Brink parameter should be exposed as a sensor."""
 
-    if description.parameter_key == "ventilation_percentage":
+    if description.parameter_key in {
+        "ventilation_percentage",
+        "cabinet_sound_power",
+        "supply_sound_power",
+        "exhaust_sound_power",
+    }:
         return True
 
     if description.is_device_attribute:
         return True
 
-    param = device.get("parameters", {}).get(description.parameter_key)
+    param = device.parameters.get(description.parameter_key)
 
     if not param:
         return False
@@ -685,7 +738,7 @@ async def async_setup_entry(
     known_parameters.add("ebus_co2_sensor_status")
 
     for system_id, device in (coordinator.data or {}).items():
-        for key, param in device.get("parameters", {}).items():
+        for key, param in device.parameters.items():
             if key not in known_parameters:
                 _LOGGER.info(
                     "Unhandled parameter key=%s name=%s value=%s "
@@ -846,13 +899,13 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
     @property
     def _raw_value(self) -> object | None:
         """Return the raw sensor value."""
-
         if self.entity_description.is_device_attribute:
             device = self._device
 
             if device is None:
                 return None
-            return device.get(self.parameter_key)
+
+            return getattr(device, self.parameter_key, None)
 
         param = self.data
 
@@ -862,23 +915,26 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         return param.get("value")
 
     @property
-    def native_value(self) -> str | int | float | None:
+    def native_value(self) -> StateType:
         """Return the sensor value."""
+
+        value_fn = self.entity_description.value_fn
+        if value_fn is not None:
+            return value_fn(self)
 
         if self.parameter_key == "ventilation_percentage":
             return self._calculate_ventilation_percentage()
 
-        if self.parameter_key == "ip_address":
+        if self.parameter_key in {
+            "ip_address",
+            "dns_server",
+        }:
             if self.data is None:
                 return None
-            value = str(self.data.get("value"))
-            return value
-
-        if self.parameter_key == "dns_server":
-            if self.data is None:
+            value = self.data.get("value")
+            if not value:
                 return None
-            value = str(self.data.get("value"))
-            return value
+            return str(value)
 
         _LOGGER.debug(
             "sensor value %s raw=%s",
@@ -893,15 +949,30 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
 
         if self.entity_description.is_enum:
             value_map = self.entity_description.value_map
+            mapped = value_map.get(int(value))
 
             if value_map is not None:
+                try:
+                    mapped = value_map.get(int(value))
+                except (TypeError, ValueError):
+                    mapped = None
+
+                if mapped is None:
+                    _LOGGER.debug(
+                        "Unknown enum value %s for %s",
+                        value,
+                        self.parameter_key,
+                    )
+                    return None
+
                 _LOGGER.debug(
-                    "gateway_state value=%s mapped=%s options=%s",
+                    "Enum %s raw=%s mapped=%s options=%s",
+                    self.parameter_key,
                     value,
-                    value_map.get(int(value), str(value)),
+                    mapped,
                     self.options,
                 )
-                return value_map.get(int(value), "unknown")
+                return mapped
 
             param = self.data
 
@@ -931,112 +1002,95 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
     def available(self) -> bool:
         """Return if entity is available."""
 
-        _LOGGER.debug(
-            "gateway_state available: key=%s super=%s data=%s raw=%s",
-            self.entity_description.parameter_key,
-            super().available,
-            self.data,
-            self._raw_value,
-        )
-
-        if self.entity_description.parameter_key == "ventilation_percentage":
-            return True
-
-        if self.entity_description.parameter_key == "gateway_state":
-            return True
-
-        if self.entity_description.parameter_key == "ip_address":
-            return True
-
-        if self.entity_description.parameter_key == "dns_server":
-            return True
-
+        device = self._device
+        if device:
+            parameters = device.parameters
+        parameter_key = self.entity_description.parameter_key
         param = self.data
+
+        if (
+            param is None
+            or param.get("value_state") == ValueState.INVALID
+        ):
+            _LOGGER.debug(
+                "gateway_state available: key=%s super=%s data=%s raw=%s",
+                parameter_key,
+                super().available,
+                param,
+                self._raw_value,
+            )
+            # return False
+
+        if parameter_key == "ventilation_percentage":
+            if device is None:
+                return True
+
+            parameters = device.parameters
+            if not isinstance(parameters, dict):
+                return False
+
+            airflow_parameter = parameters.get("ventilation_mode_3_airflow")
+            if not isinstance(airflow_parameter, dict):
+                return False
+
+            try:
+                return float(airflow_parameter.get("max_value", 0)) > 0
+            except (TypeError, ValueError):
+                return False
+
+        if parameter_key in {
+            "cabinet_sound_power",
+            "supply_sound_power",
+            "exhaust_sound_power",
+        }:
+            _LOGGER.debug("available parameter_key: %s coordinator: %s has_blocking_error: %s super: %s device: %s device_is_online %s",
+                          parameter_key,
+                          self.coordinator.last_update_success,
+                          not self.has_blocking_error,
+                          not super().available,
+                          device is not None,
+                          device.device_is_online if device else False)
+            return (
+                self.coordinator.last_update_success
+                and not self.has_blocking_error
+                and not super().available
+                and device is not None
+                and device.device_is_online
+            )
+
+        if parameter_key == "gateway_state":
+            return self.coordinator.last_update_success
+
+        if parameter_key in {
+            "ip_address",
+            "dns_server",
+        }:
+            return self.data is not None
 
         return (
             super().available
             and param is not None
-            and param.get("value_state") != 5
+            and param.get("value_state") != ValueState.INVALID
         )
 
-    def old_calculate_ventilation_percentage(self) -> int | None:
-        """Calculate ventilation percentage based on configured airflow levels."""
-        parameters = self._device.get("parameters", {})
+    def _calculate_cabinet_sound_power(self) -> float | None:
+        """Calculate the estimated cabinet sound power."""
+        airflow = self.cabinet_airflow
+        pressure = self.cabinet_pressure
 
-        try:
-            supply_flow = float(
-                parameters["actual_supply_air_flow"]["value"]
-            )
-            exhaust_flow = float(
-                parameters["actual_exhaust_air_flow"]["value"]
-            )
-            min_airflow = 0
-            max_airflow = float(
-                parameters["ventilation_mode_3_airflow"]["max_value"]
-            )
-            airflow_0 = float(
-                parameters["ventilation_mode_0_airflow"]["value"]
-            )
-            airflow_1 = float(
-                parameters["ventilation_mode_1_airflow"]["value"]
-            )
-            airflow_2 = float(
-                parameters["ventilation_mode_2_airflow"]["value"]
-            )
-            airflow_3 = float(
-                parameters["ventilation_mode_3_airflow"]["value"]
-            )
-        except (
-            KeyError,
-            TypeError,
-            ValueError,
-        ):
+        if airflow is None or pressure is None:
             return None
 
-        current_flow = (
-            supply_flow
-            + exhaust_flow
-        ) / 2
-
-        levels = [
-            (airflow_0, 0.0),
-            (airflow_1, 33.333),
-            (airflow_2, 66.667),
-            (airflow_3, 100.0),
-        ]
-
-        if current_flow <= levels[0][0]:
-            return 0
-
-        if current_flow >= levels[-1][0]:
-            return 100
-
-        for index in range(len(levels) - 1):
-            lower_flow, lower_percent = levels[index]
-            upper_flow, upper_percent = levels[index + 1]
-
-            if lower_flow <= current_flow <= upper_flow:
-                if upper_flow == lower_flow:
-                    return round(upper_percent)
-
-                fraction = (
-                    (current_flow - lower_flow)
-                    / (upper_flow - lower_flow)
-                )
-
-                percentage = (
-                    lower_percent
-                    + fraction * (upper_percent - lower_percent)
-                )
-
-                return round(percentage)
-
-        return None
+        return estimate_sound_power(
+            airflow=airflow,
+            pressure=pressure,
+            coefficients=CABINET_SOUND_POWER_COEFFICIENTS,
+        )
 
     def _calculate_ventilation_percentage(self) -> int | None:
         """Calculate ventilation percentage based on configured airflow levels."""
         if self._device:
-            parameters = self._device.get("parameters", {})
+            parameters = self._device.parameters
 
         try:
             supply_flow = float(
@@ -1073,3 +1127,84 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         # Calculate percentage based on current flow
         fraction = (current_flow - min_airflow) / (max_airflow - min_airflow)
         return round(fraction * 100)
+
+    @property
+    def cabinet_airflow(self) -> float | None:
+        """Return the average cabinet airflow in m³/h."""
+        if self.supply_airflow is None or self.exhaust_airflow is None:
+            return None
+
+        return (self.supply_airflow + self.exhaust_airflow) / 2.0
+
+    @property
+    def cabinet_pressure(self) -> float | None:
+        """Return the average cabinet pressure in Pa."""
+        if self.supply_pressure is None or self.exhaust_pressure is None:
+            return None
+
+        return (self.supply_pressure + self.exhaust_pressure) / 2.0
+
+    @property
+    def cabinet_sound_power(self) -> float | None:
+        """Return the estimated cabinet sound power."""
+        airflow = self.cabinet_airflow
+        pressure = self.cabinet_pressure
+
+        if airflow is None or pressure is None:
+            return None
+
+        return estimate_sound_power(
+            airflow=airflow,
+            pressure=pressure,
+            coefficients=CABINET_SOUND_POWER_COEFFICIENTS,
+        )
+
+    @property
+    def supply_airflow(self) -> float | None:
+        """Return the current supply airflow in m³/h."""
+        return self._parameter_value(PARAM_SUPPLY_AIR_FLOW)
+
+    @property
+    def exhaust_airflow(self) -> float | None:
+        """Return the current exhaust airflow in m³/h."""
+        return self._parameter_value(PARAM_EXHAUST_AIR_FLOW)
+
+    @property
+    def supply_pressure(self) -> float | None:
+        """Return the current supply channel pressure in Pa."""
+        return self._parameter_value(PARAM_SUPPLY_AIR_PRESSURE)
+
+    @property
+    def exhaust_pressure(self) -> float | None:
+        """Return the current exhaust channel pressure in Pa."""
+        return self._parameter_value(PARAM_EXHAUST_AIR_PRESSURE)
+
+    @property
+    def supply_sound_power(self) -> float | None:
+        """Return the estimated supply duct sound power."""
+        airflow = self.supply_airflow
+        pressure = self.supply_pressure
+
+        if airflow is None or pressure is None:
+            return None
+
+        return estimate_sound_power(
+            airflow=airflow,
+            pressure=pressure,
+            coefficients=SUPPLY_SOUND_POWER_COEFFICIENTS,
+        )
+
+    @property
+    def exhaust_sound_power(self) -> float | None:
+        """Return the estimated exhaust duct sound power."""
+        airflow = self.exhaust_airflow
+        pressure = self.exhaust_pressure
+
+        if airflow is None or pressure is None:
+            return None
+
+        return estimate_sound_power(
+            airflow=airflow,
+            pressure=pressure,
+            coefficients=EXHAUST_SOUND_POWER_COEFFICIENTS,
+        )
