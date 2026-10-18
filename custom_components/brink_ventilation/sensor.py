@@ -1043,17 +1043,9 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             "supply_sound_power",
             "exhaust_sound_power",
         }:
-            _LOGGER.debug("available parameter_key: %s coordinator: %s has_blocking_error: %s super: %s device: %s device_is_online %s",
-                          parameter_key,
-                          self.coordinator.last_update_success,
-                          not self.has_blocking_error,
-                          not super().available,
-                          device is not None,
-                          device.device_is_online if device else False)
             return (
                 self.coordinator.last_update_success
                 and not self.has_blocking_error
-                and not super().available
                 and device is not None
                 and device.device_is_online
             )

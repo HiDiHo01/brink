@@ -50,6 +50,7 @@ class BrinkDeviceData:
     sw_version: str | None
     alerts: list[BrinkAlert]
     parameters: dict[str, dict[str, object]]
+    has_blocking_error: bool = False
 
 
 @dataclass(slots=True, frozen=True)

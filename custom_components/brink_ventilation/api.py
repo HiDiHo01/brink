@@ -14,7 +14,7 @@ from .const import (
     PARAM_SOFTWARE_LABEL,
 )
 from .core.brink_home_cloud import BrinkHomeCloud
-from .models import BrinkDeviceData
+from .models import BrinkAlertLevel, BrinkDeviceData
 
 _LOGGER = logging.getLogger(__name__)
 PARAM_IP_ADDRESS = "ip_address"
@@ -42,17 +42,6 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
 
     for system in systems:
         system_id = int(system["system_id"])
-        is_system_owner = system["is_system_owner"]
-        is_editable = system["is_editable"]
-        access_level = system["access_level"]
-        owner_group_name = system["owner_group_name"]
-        is_favorite = system["is_favorite"]
-        gateway_state = system["gateway_state"]
-        active_alert_count = system["active_alert_count"]
-        iana_time_zone = system["iana_time_zone"]
-        two_letter_country_code = system["two_letter_country_code"]
-        user_group_names = system["user_group_names"]
-        total_count = system["total_count"]
         _LOGGER.debug("Brink Flair system [%s] properties: %s", system_id, system)
         device, alerts, parameters = await asyncio.gather(
             brink_client.async_get_device(system_id),
@@ -64,6 +53,9 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
         gateway_type_id = device.get("gatewayTypeId")
         is_online = device.get("isOnline")
         _LOGGER.debug("Brink Flair device parameters: %s", parameters)
+        has_blocking = any(
+            alert.level == BrinkAlertLevel.BLOCKING for alert in alerts
+        )
         devices[system_id] = BrinkDeviceData(
             api_is_online=True,
             system_id=system_id,
@@ -96,6 +88,7 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
             ),
             parameters=parameters,
             alerts=alerts,
+            has_blocking_error=has_blocking,
         )
 
     return devices
