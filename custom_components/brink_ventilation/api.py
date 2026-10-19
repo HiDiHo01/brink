@@ -100,6 +100,16 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
             parameters=parameters,
             alerts=alerts,
             has_blocking_error=has_blocking,
+            is_system_owner=is_system_owner,
+            is_editable=is_editable,
+            access_level=access_level,
+            owner_group_name=owner_group_name,
+            is_favorite=is_favorite,
+            active_alert_count=active_alert_count,
+            iana_time_zone=iana_time_zone,
+            two_letter_country_code=two_letter_country_code,
+            user_group_names=user_group_names,
+            total_count=total_count,
         )
 
     return devices

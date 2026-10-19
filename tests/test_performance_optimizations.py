@@ -101,3 +101,41 @@ def test_brink_device_data_has_blocking_error_computed():
         ),
     )
     assert device_blocked.has_blocking_error is True
+
+
+def test_brink_device_data_system_attributes():
+    """Test that system attributes are correctly stored on BrinkDeviceData."""
+    device = BrinkDeviceData(
+        api_is_online=True,
+        system_id=101,
+        name="Test Device",
+        internal_name="Test Device",
+        model="Flair 300",
+        serial_number="123456",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.50",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={},
+        has_blocking_error=False,
+        is_system_owner=True,
+        is_editable=True,
+        access_level=12,
+        owner_group_name="Home",
+        is_favorite=False,
+        active_alert_count=0,
+        iana_time_zone="Europe/Amsterdam",
+        two_letter_country_code="NL",
+        user_group_names=["Home"],
+        total_count=1,
+    )
+
+    assert device.is_system_owner is True
+    assert device.owner_group_name == "Home"
+    assert device.iana_time_zone == "Europe/Amsterdam"
+    assert device.two_letter_country_code == "NL"
+    assert device.active_alert_count == 0
+    assert device.access_level == 12
