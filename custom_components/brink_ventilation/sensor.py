@@ -1094,11 +1094,12 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         if parameter_key == "gateway_state":
             return self.coordinator.last_update_success
 
-        if parameter_key in {
-            "ip_address",
-            "dns_server",
-        }:
-            return self.data is not None
+        if self.entity_description.is_device_attribute:
+            return (
+                self.coordinator.last_update_success
+                and device is not None
+                and getattr(device, parameter_key, None) is not None
+            )
 
         return (
             super().available

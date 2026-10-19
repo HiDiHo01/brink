@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from unittest.mock import MagicMock
+
 from custom_components.brink_ventilation.models import (
     BrinkAlert,
     BrinkAlertLevel,
     BrinkDeviceData,
+)
+from custom_components.brink_ventilation.sensor import (
+    BrinkHomeSensorEntity,
+    BrinkSensorDescription,
 )
 
 
@@ -139,3 +145,46 @@ def test_brink_device_data_system_attributes():
     assert device.two_letter_country_code == "NL"
     assert device.active_alert_count == 0
     assert device.access_level == 12
+
+
+def test_device_attribute_sensor_availability():
+    """Test availability logic for device attribute sensors."""
+    device = BrinkDeviceData(
+        api_is_online=True,
+        system_id=101,
+        name="Test Device",
+        internal_name="Test Device",
+        model="Flair 300",
+        serial_number="123456",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.50",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={},
+        has_blocking_error=False,
+        owner_group_name="Home Group",
+    )
+
+    coordinator = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.data = {101: device}
+
+    desc = BrinkSensorDescription(
+        key="owner_group_name",
+        translation_key="owner_group_name",
+        parameter_key="owner_group_name",
+        is_device_attribute=True,
+    )
+
+    entity = BrinkHomeSensorEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=desc,
+    )
+
+    assert entity.available is True
+    assert entity.native_value == "Home Group"
