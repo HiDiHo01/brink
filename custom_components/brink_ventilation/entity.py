@@ -48,6 +48,7 @@ class BrinkHomeSystemEntity(CoordinatorEntity[BrinkCoordinator]):
     def device_info(self) -> DeviceInfo:
         """Return device info for the Brink entity."""
         device = self._device
+        name = self.device_name
         if device is None:
             return DeviceInfo(
                 identifiers={(DOMAIN, str(self.system_id))},

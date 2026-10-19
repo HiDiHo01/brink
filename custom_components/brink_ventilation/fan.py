@@ -155,6 +155,11 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         # device = next(iter((self.coordinator.data or {}).values()), {})
         device = (self.coordinator.data or {}).get(self.system_id, {})
         parameters = device.parameters
+        ventilation = self.data or {}
+        level = int(ventilation.get("value", 0))
+        airflow_param = (
+            device.parameters.get(f"ventilation_mode_{level}_airflow", {})
+        )
 
         self._current_airflow = (
             parameters.get("supply_air_flow_setpoint", {})
