@@ -9,7 +9,7 @@ from .uid_definitions import UID_LOOKUP, UIDType
 
 def _parse_bytes(value: str) -> list[int]:
     """Parse a comma-separated byte string."""
-    return [int(part.strip()) for part in value.split(",")]
+    return [int(part) for part in value.split(",")]
 
 
 def parse_uint16(values: list[int]) -> int:
@@ -148,6 +148,14 @@ DECODERS: dict[UIDType, Callable[[str], object]] = {
     UIDType.DATE: decode_date,
 }
 
+# Pre-computed lookup table for string keys (e.g., "UID1" or "1" -> ("ventilation_mode", decode_uint16))
+# to avoid string parsing, string slicing, and multiple dict lookups during polling.
+UID_KEY_LOOKUP: dict[str, tuple[str, Callable[[str], object] | None]] = {}
+for _def in UID_LOOKUP.values():
+    _entry = (_def.key, DECODERS.get(_def.value_type))
+    UID_KEY_LOOKUP[f"UID{_def.uid}"] = _entry
+    UID_KEY_LOOKUP[str(_def.uid)] = _entry
+
 
 def parse_uid_values(
     values: dict[str, str],
@@ -156,20 +164,28 @@ def parse_uid_values(
     parsed: dict[str, object] = {}
 
     for uid_key, raw_value in values.items():
-        uid = int(uid_key.removeprefix("UID"))
+        item = UID_KEY_LOOKUP.get(uid_key)
 
-        definition = UID_LOOKUP.get(uid)
-        if definition is None:
-            continue
+        if item is None:
+            try:
+                uid = int(uid_key.removeprefix("UID"))
+            except ValueError:
+                continue
 
-        decoder = DECODERS.get(definition.value_type)
+            definition = UID_LOOKUP.get(uid)
+            if definition is None:
+                continue
+            item = (definition.key, DECODERS.get(definition.value_type))
+
+        key, decoder = item
+
         if decoder is None:
-            parsed[definition.key] = raw_value
+            parsed[key] = raw_value
             continue
 
         try:
-            parsed[definition.key] = decoder(raw_value)
+            parsed[key] = decoder(raw_value)
         except (TypeError, ValueError):
-            parsed[definition.key] = raw_value
+            parsed[key] = raw_value
 
     return parsed
