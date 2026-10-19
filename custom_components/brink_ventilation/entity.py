@@ -15,7 +15,8 @@ from .const import (
     PARAM_SUPPLY_AIR_PRESSURE,
 )
 from .coordinator import BrinkCoordinator
-from .models import BrinkAlertLevel, BrinkDeviceData
+from .models import BrinkDeviceData
+from .sound import CABINET_SOUND_POWER_COEFFICIENTS, estimate_sound_power
 
 
 # class BrinkHomeSystemEntity(CoordinatorEntity):
@@ -144,13 +145,7 @@ class BrinkHomeDeviceEntity(BrinkHomeSystemEntity):
     def has_blocking_error(self) -> bool:
         """Return True if the device has a blocking fault."""
         device = self._device
-        if device is None:
-            return False
-
-        return any(
-            alert.level == BrinkAlertLevel.BLOCKING
-            for alert in device.alerts
-        )
+        return device.has_blocking_error if device is not None else False
 
     @property
     def api_is_online(self) -> bool:
@@ -224,9 +219,10 @@ class BrinkHomeDeviceEntity(BrinkHomeSystemEntity):
         except (KeyError, TypeError, ValueError):
             return None
 
-        return cabinet_sound_power(
+        return estimate_sound_power(
             airflow=airflow,
             pressure=pressure,
+            coefficients=CABINET_SOUND_POWER_COEFFICIENTS,
         )
 
     def _parameter_value(

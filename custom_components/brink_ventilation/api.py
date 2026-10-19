@@ -14,7 +14,7 @@ from .const import (
     PARAM_SOFTWARE_LABEL,
 )
 from .core.brink_home_cloud import BrinkHomeCloud
-from .models import BrinkDeviceData
+from .models import BrinkAlertLevel, BrinkDeviceData
 
 _LOGGER = logging.getLogger(__name__)
 PARAM_IP_ADDRESS = "ip_address"
@@ -64,6 +64,9 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
         gateway_type_id = device.get("gatewayTypeId")
         is_online = device.get("isOnline")
         _LOGGER.debug("Brink Flair device parameters: %s", parameters)
+        has_blocking = any(
+            alert.level == BrinkAlertLevel.BLOCKING for alert in alerts
+        )
         devices[system_id] = BrinkDeviceData(
             api_is_online=True,
             system_id=system_id,
@@ -96,6 +99,17 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
             ),
             parameters=parameters,
             alerts=alerts,
+            has_blocking_error=has_blocking,
+            is_system_owner=is_system_owner,
+            is_editable=is_editable,
+            access_level=access_level,
+            owner_group_name=owner_group_name,
+            is_favorite=is_favorite,
+            active_alert_count=active_alert_count,
+            iana_time_zone=iana_time_zone,
+            two_letter_country_code=two_letter_country_code,
+            user_group_names=user_group_names,
+            total_count=total_count,
         )
 
     return devices

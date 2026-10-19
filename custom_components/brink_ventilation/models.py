@@ -50,6 +50,17 @@ class BrinkDeviceData:
     sw_version: str | None
     alerts: list[BrinkAlert]
     parameters: dict[str, dict[str, object]]
+    has_blocking_error: bool = False
+    is_system_owner: bool | None = None
+    is_editable: bool | None = None
+    access_level: int | None = None
+    owner_group_name: str | None = None
+    is_favorite: bool | None = None
+    active_alert_count: int | None = None
+    iana_time_zone: str | None = None
+    two_letter_country_code: str | None = None
+    user_group_names: list[str] | None = None
+    total_count: int | None = None
 
 
 @dataclass(slots=True, frozen=True)

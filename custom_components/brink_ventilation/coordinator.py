@@ -23,7 +23,7 @@ from .core.brink_home_cloud import (
     BrinkAuthError,
     BrinkHomeCloud,
 )
-from .models import BrinkAlert, BrinkAlertLevel, BrinkDeviceData
+from .models import BrinkAlert, BrinkDeviceData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,10 +61,9 @@ class BrinkCoordinator(
     @property
     def has_blocking_error(self) -> bool:
         """Return whether any device has an active blocking error."""
-        return any(
-            alert.level == BrinkAlertLevel.BLOCKING
-            for alert in self.active_alerts
-        )
+        if self.data is None:
+            return False
+        return any(device.has_blocking_error for device in self.data.values())
 
     @property
     def active_alerts(self) -> list[BrinkAlert]:
