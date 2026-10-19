@@ -1101,6 +1101,13 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
                 and getattr(device, parameter_key, None) is not None
             )
 
+        if self.entity_description.is_device_attribute:
+            return (
+                self.coordinator.last_update_success
+                and device is not None
+                and getattr(device, parameter_key, None) is not None
+            )
+
         return (
             super().available
             and param is not None
