@@ -188,3 +188,58 @@ def test_device_attribute_sensor_availability():
 
     assert entity.available is True
     assert entity.native_value == "Home Group"
+
+
+def test_blocking_error_extra_attributes():
+    """Test optimized extra state attributes for blocking error binary sensor."""
+    from custom_components.brink_ventilation.binary_sensor import (
+        BrinkBinarySensorDescription,
+        BrinkHomeBinarySensorEntity,
+        _get_blocking_error_extra_attributes,
+    )
+
+    now = datetime.now()
+    warning_alert = BrinkAlert(
+        id=1,
+        component_id=10,
+        code=100,
+        level=BrinkAlertLevel.WARNING,
+        is_active=True,
+        is_archived=False,
+        incoming=now,
+        outgoing=None,
+        code_text="Warning",
+        description="Non-blocking warning",
+    )
+
+    coordinator = MagicMock()
+    coordinator.active_alerts = [warning_alert]
+
+    desc = BrinkBinarySensorDescription(
+        key="blocking_error",
+        translation_key="blocking_error",
+        parameter_key="blocking_error",
+        requires_parameter=False,
+    )
+
+    entity = BrinkHomeBinarySensorEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=desc,
+    )
+
+    attrs = _get_blocking_error_extra_attributes(entity)
+    assert attrs["alert_count"] == 1
+    assert attrs["highest_level"] == "WARNING"
+    assert attrs["highest_level_value"] == int(BrinkAlertLevel.WARNING)
+    assert len(attrs["alerts"]) == 1
+    assert attrs["alerts"][0]["id"] == 1
+
+    # Test empty alerts case
+    coordinator.active_alerts = []
+    attrs_empty = _get_blocking_error_extra_attributes(entity)
+    assert attrs_empty["alert_count"] == 0
+    assert attrs_empty["highest_level"] == "INFORMATION"
+    assert attrs_empty["highest_level_value"] == int(BrinkAlertLevel.INFORMATION)
+    assert attrs_empty["alerts"] == []
