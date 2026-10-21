@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-
 from unittest.mock import MagicMock
 
 from custom_components.brink_ventilation.models import (
@@ -11,6 +10,7 @@ from custom_components.brink_ventilation.models import (
     BrinkAlertLevel,
     BrinkDeviceData,
 )
+from custom_components.brink_ventilation.select import BrinkSelectEntityDescription
 from custom_components.brink_ventilation.sensor import (
     BrinkHomeSensorEntity,
     BrinkSensorDescription,
@@ -188,3 +188,34 @@ def test_device_attribute_sensor_availability():
 
     assert entity.available is True
     assert entity.native_value == "Home Group"
+
+
+def test_brink_select_description_reverse_label_map():
+    """Test that reverse_label_map computes and caches correctly."""
+    desc = BrinkSelectEntityDescription(
+        key="test_select",
+        parameter_key="test_param",
+        label_map={"0": "Off", "1": "On", "2": "Auto"},
+    )
+
+    # First access computes the reverse label map
+    reverse1 = desc.reverse_label_map
+    assert reverse1 == {"Off": "0", "On": "1", "Auto": "2"}
+
+    # Second access returns cached object instance
+    reverse2 = desc.reverse_label_map
+    assert reverse2 is reverse1
+
+
+def test_brink_select_description_reverse_label_map_none():
+    """Test reverse_label_map when label_map is None."""
+    desc = BrinkSelectEntityDescription(
+        key="test_select_none",
+        parameter_key="test_param_none",
+    )
+
+    reverse1 = desc.reverse_label_map
+    assert reverse1 == {}
+
+    reverse2 = desc.reverse_label_map
+    assert reverse2 is reverse1
