@@ -447,10 +447,8 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         if not super().available:
             return False
 
-        device = next(
-            iter((self.coordinator.data or {}).values()),
-            None,
-        )
+        # Use O(1) device lookup by system_id instead of creating temporary dict_values views/iterators
+        device = self._device
         if device is None:
             return False
 
