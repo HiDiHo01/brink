@@ -9,3 +9,9 @@
 **Learning:** `attr_fn` on the `blocking_error` binary sensor was accessing `entity.coordinator.active_alerts` 4 times per state attribute dictionary construction, triggering redundant list comprehensions across all devices and alerts. It also ran two separate `max()` generator expressions over the same list to extract `.name` and `int(...)`. Refactoring `attr_fn` into a single-pass helper function fetched `active_alerts` once, evaluated `max(alert.level)` once, and eliminated redundant list allocations and iterations.
 
 **Action:** Avoid calling property getters that compute/allocate lists multiple times inside dictionary constructors or lambdas; store the property return value in a local variable and compute aggregate metrics in a single pass.
+
+## 2025-05-19 - Dataclass Caching without Polluting Dataclass Fields
+
+**Learning:** When caching computed properties on a frozen dataclass instance (such as Home Assistant's `SelectEntityDescription`), adding a default field to the dataclass definition adds it to `__init__`, `__eq__`, `__repr__`, and `__hash__`. Mutating this field later via `object.__setattr__` breaks equality comparisons (`__eq__`) between dataclass instances. Using dynamic attribute caching via `object.__getattribute__` and `object.__setattr__` with a un-declared attribute name avoids polluting dataclass comparison semantics.
+
+**Action:** Avoid declaring private dataclass fields solely for caching in frozen dataclasses. Use `object.__getattribute__` / `object.__setattr__` for lazy instance caching when `cached_property` cannot be applied.
