@@ -10,7 +10,14 @@ from custom_components.brink_ventilation.models import (
     BrinkAlertLevel,
     BrinkDeviceData,
 )
-from custom_components.brink_ventilation.select import BrinkSelectEntityDescription
+from custom_components.brink_ventilation.number import (
+    BrinkHomeNumberEntity,
+    BrinkNumberEntityDescription,
+)
+from custom_components.brink_ventilation.select import (
+    BrinkHomeSelectEntity,
+    BrinkSelectEntityDescription,
+)
 from custom_components.brink_ventilation.sensor import (
     BrinkHomeSensorEntity,
     BrinkSensorDescription,
@@ -219,3 +226,109 @@ def test_brink_select_description_reverse_label_map_none():
 
     reverse2 = desc.reverse_label_map
     assert reverse2 is reverse1
+
+
+def test_select_entity_availability_and_device_lookup():
+    """Test BrinkHomeSelectEntity availability and O(1) device resolution."""
+    device1 = BrinkDeviceData(
+        api_is_online=True,
+        system_id=101,
+        name="Device 1",
+        internal_name="Device 1",
+        model="Flair 300",
+        serial_number="101",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.50",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={"operating_mode": {"value": "0", "value_state": 1}},
+    )
+
+    device2 = BrinkDeviceData(
+        api_is_online=True,
+        system_id=102,
+        name="Device 2",
+        internal_name="Device 2",
+        model="Flair 400",
+        serial_number="102",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.51",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={"operating_mode": {"value": "1", "value_state": 1}},
+    )
+
+    coordinator = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.api_is_online = True
+    coordinator.data = {101: device1, 102: device2}
+
+    desc = BrinkSelectEntityDescription(
+        key="operating_mode",
+        parameter_key="operating_mode",
+    )
+
+    # System 102 entity should resolve to device2, not device1
+    entity2 = BrinkHomeSelectEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=102,
+        description=desc,
+    )
+
+    assert entity2._device is device2
+    assert entity2.available is True
+
+    # When coordinator data is None/empty, available returns False safely
+    coordinator.data = None
+    assert entity2.available is False
+
+
+def test_number_entity_availability_and_device_lookup():
+    """Test BrinkHomeNumberEntity availability and safe handling of empty data."""
+    device = BrinkDeviceData(
+        api_is_online=True,
+        system_id=101,
+        name="Device 1",
+        internal_name="Device 1",
+        model="Flair 300",
+        serial_number="101",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.50",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={"bypass_temperature": {"value": "20", "value_state": 1}},
+    )
+
+    coordinator = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.api_is_online = True
+    coordinator.data = {101: device}
+
+    desc = BrinkNumberEntityDescription(
+        key="bypass_temperature",
+        parameter_key="bypass_temperature",
+    )
+
+    entity = BrinkHomeNumberEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=desc,
+    )
+
+    assert entity._device is device
+    assert entity.available is True
+
+    # Empty coordinator data should return False without raising AttributeError
+    coordinator.data = {}
+    assert entity.available is False
