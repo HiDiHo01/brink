@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
+from functools import cached_property
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -48,19 +49,14 @@ class BrinkSelectEntityDescription(SelectEntityDescription):
     parameter_key: str
     label_map: Mapping[str, str] | None = None
 
-    @property
+    @cached_property
     def reverse_label_map(self) -> dict[str, str]:
-        """Return reverse label mapping, cached on the dataclass instance."""
-        try:
-            return object.__getattribute__(self, "_reverse_label_map_cache")
-        except AttributeError:
-            reverse = (
-                {label: value for value, label in self.label_map.items()}
-                if self.label_map
-                else {}
-            )
-            object.__setattr__(self, "_reverse_label_map_cache", reverse)
-            return reverse
+        """Return reverse label mapping, cached efficiently on instance using standard cached_property."""
+        return (
+            {label: value for value, label in self.label_map.items()}
+            if self.label_map
+            else {}
+        )
 
 
 SELECT_DESCRIPTIONS: tuple[BrinkSelectEntityDescription, ...] = (
