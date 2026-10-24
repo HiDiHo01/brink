@@ -368,6 +368,8 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if reverse_label_map:
             selected_value = reverse_label_map.get(option)
+        elif (reverse_options_map := param.get("reverse_options_map")) is not None:
+            selected_value = reverse_options_map.get(option)
         else:
             selected_value = next(
                 (
@@ -404,6 +406,9 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if (label_map := self.entity_description.label_map) is not None:
             return label_map.get(current_value)
+
+        if (options_map := param.get("options_map")) is not None:
+            return options_map.get(current_value)
 
         return next(
             (
