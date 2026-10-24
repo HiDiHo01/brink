@@ -830,6 +830,16 @@ class BrinkHomeCloud:
                         if list_items
                         else []
                     )
+                    options_map = (
+                        {opt["value"]: opt["label"] for opt in options}
+                        if options
+                        else {}
+                    )
+                    reverse_options_map = (
+                        {opt["label"]: opt["value"] for opt in options}
+                        if options
+                        else {}
+                    )
 
                     # if options:
                     #    """Show parameter with options"""
@@ -929,6 +939,8 @@ class BrinkHomeCloud:
                         "component_id": param.get("componentId"),
                         "numeric_id": numeric_id,
                         "options": options,
+                        "options_map": options_map,
+                        "reverse_options_map": reverse_options_map,
                     }
             BrinkHomeCloud._extract_parameters(
                 nav_item.get("navigationItems", []), parameters

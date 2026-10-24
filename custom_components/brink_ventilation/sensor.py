@@ -990,7 +990,6 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
 
         if self.entity_description.is_enum:
             value_map = self.entity_description.value_map
-            mapped = value_map.get(int(value))
 
             if value_map is not None:
                 try:
@@ -1018,14 +1017,17 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             param = self.data
 
             if param is not None:
-                selected = next(
-                    (
-                        item["label"]
-                        for item in param.get("options", [])
-                        if item["value"] == str(value)
-                    ),
-                    None,
-                )
+                if (options_map := param.get("options_map")) is not None:
+                    selected = options_map.get(str(value))
+                else:
+                    selected = next(
+                        (
+                            item["label"]
+                            for item in param.get("options", [])
+                            if item["value"] == str(value)
+                        ),
+                        None,
+                    )
 
                 if selected is not None:
                     return selected

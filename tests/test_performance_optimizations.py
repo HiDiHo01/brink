@@ -332,3 +332,105 @@ def test_number_entity_availability_and_device_lookup():
     # Empty coordinator data should return False without raising AttributeError
     coordinator.data = {}
     assert entity.available is False
+
+
+def test_extract_parameters_options_maps():
+    """Test that _extract_parameters pre-computes options_map and reverse_options_map."""
+    from custom_components.brink_ventilation.core.brink_home_cloud import (
+        BrinkHomeCloud,
+    )
+
+    nav_items = [
+        {
+            "parameterGroups": [
+                {
+                    "parameters": [
+                        {
+                            "id": 16012,
+                            "name": "Betriebsart",
+                            "value": "1",
+                            "listItems": [
+                                {"value": 0, "text": "Automatic", "isSelectable": True},
+                                {"value": 1, "text": "Manual", "isSelectable": True},
+                            ],
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+
+    parameters = {}
+    BrinkHomeCloud._extract_parameters(nav_items, parameters)
+
+    assert "operating_mode" in parameters
+    param = parameters["operating_mode"]
+    assert param["options_map"] == {"0": "Automatic", "1": "Manual"}
+    assert param["reverse_options_map"] == {"Automatic": "0", "Manual": "1"}
+
+
+def test_select_and_sensor_options_map_lookup():
+    """Test that select and sensor entities correctly use pre-computed options_map."""
+    options = [
+        {"value": "0", "label": "Auto"},
+        {"value": "1", "label": "Manual"},
+    ]
+    options_map = {"0": "Auto", "1": "Manual"}
+    reverse_options_map = {"Auto": "0", "Manual": "1"}
+
+    device = BrinkDeviceData(
+        api_is_online=True,
+        system_id=101,
+        name="Device 1",
+        internal_name="Device 1",
+        model="Flair 300",
+        serial_number="101",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.50",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={
+            "operating_mode": {
+                "value": "1",
+                "value_state": 1,
+                "options": options,
+                "options_map": options_map,
+                "reverse_options_map": reverse_options_map,
+            }
+        },
+    )
+
+    coordinator = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.api_is_online = True
+    coordinator.data = {101: device}
+
+    select_desc = BrinkSelectEntityDescription(
+        key="operating_mode",
+        parameter_key="operating_mode",
+    )
+    select_entity = BrinkHomeSelectEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=select_desc,
+    )
+
+    assert select_entity.current_option == "Manual"
+
+    sensor_desc = BrinkSensorDescription(
+        key="operating_mode",
+        parameter_key="operating_mode",
+        is_enum=True,
+    )
+    sensor_entity = BrinkHomeSensorEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=sensor_desc,
+    )
+
+    assert sensor_entity.native_value == "Manual"

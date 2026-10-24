@@ -15,3 +15,9 @@
 **Learning:** Using `next(iter((self.coordinator.data or {}).values()), ...)` in entity property getters (`available`, actions) created temporary `dict_values` views and iterator objects on every property evaluation across all entity instances. In addition to garbage collection pressure, un-indexed iteration arbitrarily picked the first system in the coordinator dictionary instead of resolving the entity's specific `system_id`. Using `self._device` (which performs `self.coordinator.data.get(self.system_id)`) converted this to an O(1) dictionary lookup, avoided iterator allocations, and ensured correct device resolution in multi-system Home Assistant setups.
 
 **Action:** Always prefer `self._device` or explicit dictionary key lookup over `next(iter(...))` or list/dict-view creation when accessing coordinator data in Home Assistant entity classes.
+
+## 2025-05-21 - Pre-indexing Option Dictionaries during Parameter Extraction
+
+**Learning:** Select and enum sensor entities were searching parameter options lists via `next((opt["label"] for opt in param["options"] if opt["value"] == val), None)` on every state evaluation. With dynamic parameter option lists from the Brink cloud portal, linear generator search caused (~5x) overhead on repeated state reads. Building `options_map` (`value -> label`) and `reverse_options_map` (`label -> value`) dictionaries once in `_extract_parameters` during data retrieval reduced option resolution to O(1) dict lookups.
+
+**Action:** Pre-build bidirectional dictionary indexes when mapping raw API options lists to UI representations during data extraction, avoiding linear search in property getters.
