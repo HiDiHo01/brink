@@ -830,16 +830,15 @@ class BrinkHomeCloud:
                         if list_items
                         else []
                     )
-                    options_map = (
-                        {opt["value"]: opt["label"] for opt in options}
-                        if options
-                        else {}
-                    )
-                    reverse_options_map = (
-                        {opt["label"]: opt["value"] for opt in options}
-                        if options
-                        else {}
-                    )
+                    options_map: dict[str, str] = {}
+                    reverse_options_map: dict[str, str] = {}
+                    for opt in options:
+                        val = opt["value"]
+                        lbl = opt["label"]
+                        if val not in options_map:
+                            options_map[val] = lbl
+                        if lbl not in reverse_options_map:
+                            reverse_options_map[lbl] = val
 
                     # if options:
                     #    """Show parameter with options"""
