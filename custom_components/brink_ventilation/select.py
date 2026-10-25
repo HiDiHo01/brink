@@ -50,17 +50,15 @@ class BrinkSelectEntityDescription(SelectEntityDescription):
 
     @property
     def reverse_label_map(self) -> dict[str, str]:
-        """Return reverse label mapping, cached on the dataclass instance."""
-        try:
-            return object.__getattribute__(self, "_reverse_label_map_cache")
-        except AttributeError:
-            reverse = (
-                {label: value for value, label in self.label_map.items()}
-                if self.label_map
-                else {}
-            )
-            object.__setattr__(self, "_reverse_label_map_cache", reverse)
-            return reverse
+        """Return reverse label mapping."""
+        return (
+            {
+                label: value
+                for value, label in self.label_map.items()
+            }
+            if self.label_map
+            else {}
+        )
 
 
 SELECT_DESCRIPTIONS: tuple[BrinkSelectEntityDescription, ...] = (
@@ -447,8 +445,10 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         if not super().available:
             return False
 
-        # Use O(1) device lookup by system_id instead of creating temporary dict_values views/iterators
-        device = self._device
+        device = next(
+            iter((self.coordinator.data or {}).values()),
+            None,
+        )
         if device is None:
             return False
 
