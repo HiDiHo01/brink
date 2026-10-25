@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import MagicMock
 
+from custom_components.brink_ventilation.binary_sensor import (
+    _get_blocking_error_attributes,
+)
 from custom_components.brink_ventilation.models import (
     BrinkAlert,
     BrinkAlertLevel,
@@ -435,3 +438,60 @@ def test_select_and_sensor_options_map_lookup():
     )
 
     assert sensor_entity.native_value == "Manual"
+
+
+def test_get_blocking_error_attributes_empty():
+    """Test _get_blocking_error_attributes when no active alerts exist."""
+    coordinator = MagicMock()
+    coordinator.active_alerts = []
+    entity = MagicMock(coordinator=coordinator)
+
+    attrs = _get_blocking_error_attributes(entity)
+    assert attrs == {
+        "alert_count": 0,
+        "highest_level": "INFORMATION",
+        "highest_level_value": 0,
+        "alerts": [],
+    }
+
+
+def test_get_blocking_error_attributes_with_alerts():
+    """Test _get_blocking_error_attributes with active alerts of varying levels."""
+    now = datetime.now()
+    alert_info = BrinkAlert(
+        id=1,
+        component_id=10,
+        code=101,
+        level=BrinkAlertLevel.INFORMATION,
+        is_active=True,
+        is_archived=False,
+        incoming=now,
+        outgoing=None,
+        code_text="Info",
+        description="Info alert",
+    )
+    alert_blocking = BrinkAlert(
+        id=2,
+        component_id=10,
+        code=102,
+        level=BrinkAlertLevel.BLOCKING,
+        is_active=True,
+        is_archived=False,
+        incoming=now,
+        outgoing=None,
+        code_text="Block",
+        description="Blocking error alert",
+    )
+
+    coordinator = MagicMock()
+    coordinator.active_alerts = [alert_info, alert_blocking]
+    entity = MagicMock(coordinator=coordinator)
+
+    attrs = _get_blocking_error_attributes(entity)
+    assert attrs["alert_count"] == 2
+    assert attrs["highest_level"] == "BLOCKING"
+    assert attrs["highest_level_value"] == 3
+    assert len(attrs["alerts"]) == 2
+    assert attrs["alerts"][1]["code"] == 102
+    assert attrs["alerts"][1]["level"] == "BLOCKING"
+    assert attrs["alerts"][1]["level_value"] == 3

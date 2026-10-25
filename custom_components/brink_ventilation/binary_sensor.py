@@ -222,6 +222,46 @@ def _debug_value(value: object) -> str:
     return str(value)
 
 
+def _get_blocking_error_attributes(entity: BrinkHomeBinarySensorEntity) -> dict[str, object]:
+    """Return extra state attributes for the blocking error binary sensor."""
+    active_alerts = entity.coordinator.active_alerts
+    if not active_alerts:
+        return {
+            "alert_count": 0,
+            "highest_level": BrinkAlertLevel.INFORMATION.name,
+            "highest_level_value": int(BrinkAlertLevel.INFORMATION),
+            "alerts": [],
+        }
+
+    # Evaluate highest alert level in a single O(N) pass
+    highest_alert = max(active_alerts, key=lambda alert: alert.level)
+    return {
+        "alert_count": len(active_alerts),
+        "highest_level": highest_alert.level.name,
+        "highest_level_value": int(highest_alert.level),
+        "alerts": [
+            {
+                "id": alert.id,
+                "component_id": alert.component_id,
+                "code": alert.code,
+                "level": alert.level.name,
+                "level_value": int(alert.level),
+                "is_active": alert.is_active,
+                "is_archived": alert.is_archived,
+                "incoming": alert.incoming.isoformat(),
+                "outgoing": (
+                    alert.outgoing.isoformat()
+                    if alert.outgoing is not None
+                    else None
+                ),
+                "code_text": alert.code_text,
+                "description": alert.description,
+            }
+            for alert in active_alerts
+        ],
+    }
+
+
 BINARY_SENSOR_DESCRIPTIONS: tuple[BrinkBinarySensorDescription, ...] = (
     BrinkBinarySensorDescription(
         key="gateway_status",
@@ -325,39 +365,7 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[BrinkBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:alert-octagon",
         value_fn=lambda entity: entity.coordinator.has_blocking_error,
-        attr_fn=lambda entity: {
-            "alert_count": len(entity.coordinator.active_alerts),
-            "highest_level": (
-                max(
-                    (alert.level for alert in entity.coordinator.active_alerts),
-                    default=BrinkAlertLevel.INFORMATION,
-                ).name
-            ),
-            "highest_level_value": max(
-                (int(alert.level) for alert in entity.coordinator.active_alerts),
-                default=BrinkAlertLevel.INFORMATION,
-            ),
-            "alerts": [
-                {
-                    "id": alert.id,
-                    "component_id": alert.component_id,
-                    "code": alert.code,
-                    "level": alert.level.name,
-                    "level_value": int(alert.level),
-                    "is_active": alert.is_active,
-                    "is_archived": alert.is_archived,
-                    "incoming": alert.incoming.isoformat(),
-                    "outgoing": (
-                        alert.outgoing.isoformat()
-                        if alert.outgoing is not None
-                        else None
-                    ),
-                    "code_text": alert.code_text,
-                    "description": alert.description,
-                }
-                for alert in entity.coordinator.active_alerts
-            ],
-        },
+        attr_fn=_get_blocking_error_attributes,
     ),
     BrinkBinarySensorDescription(
         key="api_online",
