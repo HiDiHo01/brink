@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import cached_property
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -49,14 +48,19 @@ class BrinkSelectEntityDescription(SelectEntityDescription):
     parameter_key: str
     label_map: Mapping[str, str] | None = None
 
-    @cached_property
+    @property
     def reverse_label_map(self) -> dict[str, str]:
-        """Return reverse label mapping, cached efficiently on instance using standard cached_property."""
-        return (
-            {label: value for value, label in self.label_map.items()}
-            if self.label_map
-            else {}
-        )
+        """Return reverse label mapping, cached on the dataclass instance."""
+        try:
+            return object.__getattribute__(self, "_reverse_label_map_cache")
+        except AttributeError:
+            reverse = (
+                {label: value for value, label in self.label_map.items()}
+                if self.label_map
+                else {}
+            )
+            object.__setattr__(self, "_reverse_label_map_cache", reverse)
+            return reverse
 
 
 SELECT_DESCRIPTIONS: tuple[BrinkSelectEntityDescription, ...] = (
@@ -364,6 +368,8 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if reverse_label_map:
             selected_value = reverse_label_map.get(option)
+        elif (reverse_options_map := param.get("reverse_options_map")) is not None:
+            selected_value = reverse_options_map.get(option)
         else:
             selected_value = next(
                 (
@@ -400,6 +406,9 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if (label_map := self.entity_description.label_map) is not None:
             return label_map.get(current_value)
+
+        if (options_map := param.get("options_map")) is not None:
+            return options_map.get(current_value)
 
         return next(
             (
@@ -443,10 +452,8 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         if not super().available:
             return False
 
-        device = next(
-            iter((self.coordinator.data or {}).values()),
-            None,
-        )
+        # Use O(1) device lookup by system_id instead of creating temporary dict_values views/iterators
+        device = self._device
         if device is None:
             return False
 

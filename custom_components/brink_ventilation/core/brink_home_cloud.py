@@ -830,6 +830,15 @@ class BrinkHomeCloud:
                         if list_items
                         else []
                     )
+                    options_map: dict[str, str] = {}
+                    reverse_options_map: dict[str, str] = {}
+                    for opt in options:
+                        val = opt["value"]
+                        lbl = opt["label"]
+                        if val not in options_map:
+                            options_map[val] = lbl
+                        if lbl not in reverse_options_map:
+                            reverse_options_map[lbl] = val
 
                     # if options:
                     #    """Show parameter with options"""
@@ -929,6 +938,8 @@ class BrinkHomeCloud:
                         "component_id": param.get("componentId"),
                         "numeric_id": numeric_id,
                         "options": options,
+                        "options_map": options_map,
+                        "reverse_options_map": reverse_options_map,
                     }
             BrinkHomeCloud._extract_parameters(
                 nav_item.get("navigationItems", []), parameters

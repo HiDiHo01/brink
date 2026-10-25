@@ -152,7 +152,6 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         self._level_1_max = 133
         self._level_2_max = 216
         self._level_3_max = 300
-        # device = next(iter((self.coordinator.data or {}).values()), {})
         device = (self.coordinator.data or {}).get(self.system_id, {})
         parameters = device.parameters
         ventilation = self.data or {}
@@ -210,7 +209,10 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     ) -> None:
         """Set airflow for a ventilation level."""
 
-        device = next(iter((self.coordinator.data or {}).values()), {})
+        device = self._device
+        if device is None:
+            raise HomeAssistantError("Device is unavailable")
+
         parameters = device.parameters
 
         parameter = parameters.get(
