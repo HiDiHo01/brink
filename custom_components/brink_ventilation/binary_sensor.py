@@ -235,34 +235,35 @@ def _get_blocking_error_extra_attributes(
             "alerts": [],
         }
 
-    highest_level = max(
-        (alert.level for alert in active_alerts),
-        default=BrinkAlertLevel.INFORMATION,
-    )
+    highest_level = BrinkAlertLevel.INFORMATION
+    alerts_list: list[dict[str, object]] = []
 
-    alerts_list = [
-        {
-            "id": alert.id,
-            "component_id": alert.component_id,
-            "code": alert.code,
-            "level": alert.level.name,
-            "level_value": int(alert.level),
-            "is_active": alert.is_active,
-            "is_archived": alert.is_archived,
-            "incoming": alert.incoming.isoformat(),
-            "outgoing": (
-                alert.outgoing.isoformat()
-                if alert.outgoing is not None
-                else None
-            ),
-            "code_text": alert.code_text,
-            "description": alert.description,
-        }
-        for alert in active_alerts
-    ]
+    for alert in active_alerts:
+        if alert.level > highest_level:
+            highest_level = alert.level
+
+        alerts_list.append(
+            {
+                "id": alert.id,
+                "component_id": alert.component_id,
+                "code": alert.code,
+                "level": alert.level.name,
+                "level_value": int(alert.level),
+                "is_active": alert.is_active,
+                "is_archived": alert.is_archived,
+                "incoming": alert.incoming.isoformat(),
+                "outgoing": (
+                    alert.outgoing.isoformat()
+                    if alert.outgoing is not None
+                    else None
+                ),
+                "code_text": alert.code_text,
+                "description": alert.description,
+            }
+        )
 
     return {
-        "alert_count": len(active_alerts),
+        "alert_count": len(alerts_list),
         "highest_level": highest_level.name,
         "highest_level_value": int(highest_level),
         "alerts": alerts_list,
