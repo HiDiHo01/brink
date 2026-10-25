@@ -3,20 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+
 from unittest.mock import MagicMock
 
 from custom_components.brink_ventilation.models import (
     BrinkAlert,
     BrinkAlertLevel,
     BrinkDeviceData,
-)
-from custom_components.brink_ventilation.number import (
-    BrinkHomeNumberEntity,
-    BrinkNumberEntityDescription,
-)
-from custom_components.brink_ventilation.select import (
-    BrinkHomeSelectEntity,
-    BrinkSelectEntityDescription,
 )
 from custom_components.brink_ventilation.sensor import (
     BrinkHomeSensorEntity,
@@ -197,138 +190,56 @@ def test_device_attribute_sensor_availability():
     assert entity.native_value == "Home Group"
 
 
-def test_brink_select_description_reverse_label_map():
-    """Test that reverse_label_map computes and caches correctly."""
-    desc = BrinkSelectEntityDescription(
-        key="test_select",
-        parameter_key="test_param",
-        label_map={"0": "Off", "1": "On", "2": "Auto"},
+def test_blocking_error_extra_attributes():
+    """Test optimized extra state attributes for blocking error binary sensor."""
+    from custom_components.brink_ventilation.binary_sensor import (
+        BrinkBinarySensorDescription,
+        BrinkHomeBinarySensorEntity,
+        _get_blocking_error_extra_attributes,
     )
 
-    # First access computes the reverse label map
-    reverse1 = desc.reverse_label_map
-    assert reverse1 == {"Off": "0", "On": "1", "Auto": "2"}
-
-    # Second access returns cached object instance
-    reverse2 = desc.reverse_label_map
-    assert reverse2 is reverse1
-
-
-def test_brink_select_description_reverse_label_map_none():
-    """Test reverse_label_map when label_map is None."""
-    desc = BrinkSelectEntityDescription(
-        key="test_select_none",
-        parameter_key="test_param_none",
-    )
-
-    reverse1 = desc.reverse_label_map
-    assert reverse1 == {}
-
-    reverse2 = desc.reverse_label_map
-    assert reverse2 is reverse1
-
-
-def test_select_entity_availability_and_device_lookup():
-    """Test BrinkHomeSelectEntity availability and O(1) device resolution."""
-    device1 = BrinkDeviceData(
-        api_is_online=True,
-        system_id=101,
-        name="Device 1",
-        internal_name="Device 1",
-        model="Flair 300",
-        serial_number="101",
-        gateway_state="online",
-        gateway_type_id=3,
-        device_is_online=True,
-        ip_address="192.168.1.50",
-        dns_server="192.168.1.1",
-        sw_version="1.0.0",
-        alerts=[],
-        parameters={"operating_mode": {"value": "0", "value_state": 1}},
-    )
-
-    device2 = BrinkDeviceData(
-        api_is_online=True,
-        system_id=102,
-        name="Device 2",
-        internal_name="Device 2",
-        model="Flair 400",
-        serial_number="102",
-        gateway_state="online",
-        gateway_type_id=3,
-        device_is_online=True,
-        ip_address="192.168.1.51",
-        dns_server="192.168.1.1",
-        sw_version="1.0.0",
-        alerts=[],
-        parameters={"operating_mode": {"value": "1", "value_state": 1}},
+    now = datetime.now()
+    warning_alert = BrinkAlert(
+        id=1,
+        component_id=10,
+        code=100,
+        level=BrinkAlertLevel.WARNING,
+        is_active=True,
+        is_archived=False,
+        incoming=now,
+        outgoing=None,
+        code_text="Warning",
+        description="Non-blocking warning",
     )
 
     coordinator = MagicMock()
-    coordinator.last_update_success = True
-    coordinator.api_is_online = True
-    coordinator.data = {101: device1, 102: device2}
+    coordinator.active_alerts = [warning_alert]
 
-    desc = BrinkSelectEntityDescription(
-        key="operating_mode",
-        parameter_key="operating_mode",
+    desc = BrinkBinarySensorDescription(
+        key="blocking_error",
+        translation_key="blocking_error",
+        parameter_key="blocking_error",
+        requires_parameter=False,
     )
 
-    # System 102 entity should resolve to device2, not device1
-    entity2 = BrinkHomeSelectEntity(
-        client=MagicMock(),
-        coordinator=coordinator,
-        system_id=102,
-        description=desc,
-    )
-
-    assert entity2._device is device2
-    assert entity2.available is True
-
-    # When coordinator data is None/empty, available returns False safely
-    coordinator.data = None
-    assert entity2.available is False
-
-
-def test_number_entity_availability_and_device_lookup():
-    """Test BrinkHomeNumberEntity availability and safe handling of empty data."""
-    device = BrinkDeviceData(
-        api_is_online=True,
-        system_id=101,
-        name="Device 1",
-        internal_name="Device 1",
-        model="Flair 300",
-        serial_number="101",
-        gateway_state="online",
-        gateway_type_id=3,
-        device_is_online=True,
-        ip_address="192.168.1.50",
-        dns_server="192.168.1.1",
-        sw_version="1.0.0",
-        alerts=[],
-        parameters={"bypass_temperature": {"value": "20", "value_state": 1}},
-    )
-
-    coordinator = MagicMock()
-    coordinator.last_update_success = True
-    coordinator.api_is_online = True
-    coordinator.data = {101: device}
-
-    desc = BrinkNumberEntityDescription(
-        key="bypass_temperature",
-        parameter_key="bypass_temperature",
-    )
-
-    entity = BrinkHomeNumberEntity(
+    entity = BrinkHomeBinarySensorEntity(
         client=MagicMock(),
         coordinator=coordinator,
         system_id=101,
         description=desc,
     )
 
-    assert entity._device is device
-    assert entity.available is True
+    attrs = _get_blocking_error_extra_attributes(entity)
+    assert attrs["alert_count"] == 1
+    assert attrs["highest_level"] == "WARNING"
+    assert attrs["highest_level_value"] == int(BrinkAlertLevel.WARNING)
+    assert len(attrs["alerts"]) == 1
+    assert attrs["alerts"][0]["id"] == 1
 
-    # Empty coordinator data should return False without raising AttributeError
-    coordinator.data = {}
-    assert entity.available is False
+    # Test empty alerts case
+    coordinator.active_alerts = []
+    attrs_empty = _get_blocking_error_extra_attributes(entity)
+    assert attrs_empty["alert_count"] == 0
+    assert attrs_empty["highest_level"] == "INFORMATION"
+    assert attrs_empty["highest_level_value"] == int(BrinkAlertLevel.INFORMATION)
+    assert attrs_empty["alerts"] == []

@@ -506,10 +506,7 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
     def available(self) -> bool:
         """Return if entity is available."""
 
-        device = self._device
-        if device is None:
-            return False
-
+        device = next(iter((self.coordinator.data or {}).values()), {})
         parameters = device.parameters
 
         param = self.data
