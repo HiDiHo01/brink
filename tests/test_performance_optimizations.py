@@ -375,11 +375,7 @@ def test_extract_parameters_options_maps():
 
 
 def test_select_and_sensor_options_map_lookup():
-    """Test that select and sensor entities correctly use pre-computed options_map."""
-    options = [
-        {"value": "0", "label": "Auto"},
-        {"value": "1", "label": "Manual"},
-    ]
+    """Test that select and sensor entities correctly use pre-computed options_map even if options list is empty."""
     options_map = {"0": "Auto", "1": "Manual"}
     reverse_options_map = {"Auto": "0", "Manual": "1"}
 
@@ -401,7 +397,7 @@ def test_select_and_sensor_options_map_lookup():
             "operating_mode": {
                 "value": "1",
                 "value_state": 1,
-                "options": options,
+                "options": [],  # Make options list empty to verify lookups use precomputed maps
                 "options_map": options_map,
                 "reverse_options_map": reverse_options_map,
             }
