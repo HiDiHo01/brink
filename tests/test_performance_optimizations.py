@@ -21,6 +21,10 @@ from custom_components.brink_ventilation.select import (
     BrinkHomeSelectEntity,
     BrinkSelectEntityDescription,
 )
+from custom_components.brink_ventilation.fan import (
+    FAN_PRESET_MODES,
+    BrinkHomeVentilationFanEntity,
+)
 from custom_components.brink_ventilation.sensor import (
     BrinkHomeSensorEntity,
     BrinkSensorDescription,
@@ -495,3 +499,40 @@ def test_get_blocking_error_attributes_with_alerts():
     assert attrs["alerts"][1]["code"] == 102
     assert attrs["alerts"][1]["level"] == "BLOCKING"
     assert attrs["alerts"][1]["level_value"] == 3
+
+
+def test_fan_preset_modes_constant_reference():
+    """Test that preset_modes returns the pre-allocated constant list instance."""
+    coordinator = MagicMock()
+    coordinator.data = {}
+
+    fan = BrinkHomeVentilationFanEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+    )
+
+    preset_modes1 = fan.preset_modes
+    preset_modes2 = fan.preset_modes
+
+    assert preset_modes1 is FAN_PRESET_MODES
+    assert preset_modes2 is FAN_PRESET_MODES
+
+
+def test_fan_entity_safe_null_device_handling():
+    """Test that fan properties safely return None/dict when device data is empty or None."""
+    coordinator = MagicMock()
+    coordinator.data = {}
+
+    fan = BrinkHomeVentilationFanEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+    )
+
+    assert fan.percentage is None
+    assert fan.werkt_percentage is None
+
+    attrs = fan.extra_state_attributes
+    assert isinstance(attrs, dict)
+    assert attrs["key"] == "speed"
