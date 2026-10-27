@@ -42,7 +42,6 @@ from ..const import (
 )
 from ..models import BrinkAlert, BrinkAlertLevel, BrinkSettings, BrinkSystem, BrinkUser
 from ..translations import TRANSLATIONS
-from .option_mapping import build_option_state_map
 
 _LOGGER = logging.getLogger(__name__)
 _TRUSTED_HOST = "www.brink-home.com"
@@ -841,10 +840,6 @@ class BrinkHomeCloud:
                         if lbl not in reverse_options_map:
                             reverse_options_map[lbl] = val
 
-                    option_state_map, ambiguous_option_states = build_option_state_map(
-                        (option["value"], option["label"]) for option in options
-                    )
-
                     # if options:
                     #    """Show parameter with options"""
                     #    _LOGGER.debug(
@@ -945,8 +940,6 @@ class BrinkHomeCloud:
                         "options": options,
                         "options_map": options_map,
                         "reverse_options_map": reverse_options_map,
-                        "option_state_map": option_state_map,
-                        "ambiguous_option_states": ambiguous_option_states,
                     }
             BrinkHomeCloud._extract_parameters(
                 nav_item.get("navigationItems", []), parameters

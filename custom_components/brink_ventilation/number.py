@@ -14,10 +14,10 @@ from homeassistant.components.number import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     EntityCategory,
     UnitOfElectricPotential,
-    UnitOfRatio,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
@@ -245,7 +245,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_1_min_ppm",
         parameter_key=PARAM_CO2_SENSOR_1_MIN_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -256,7 +256,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_1_max_ppm",
         parameter_key=PARAM_CO2_SENSOR_1_MAX_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -267,7 +267,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_2_min_ppm",
         parameter_key=PARAM_CO2_SENSOR_2_MIN_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -278,7 +278,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_2_max_ppm",
         parameter_key=PARAM_CO2_SENSOR_2_MAX_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -289,7 +289,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_3_min_ppm",
         parameter_key=PARAM_CO2_SENSOR_3_MIN_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -300,7 +300,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_3_max_ppm",
         parameter_key=PARAM_CO2_SENSOR_3_MAX_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -311,7 +311,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_4_min_ppm",
         parameter_key=PARAM_CO2_SENSOR_4_MIN_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -322,7 +322,7 @@ NUMBER_DESCRIPTIONS: tuple[BrinkNumberEntityDescription, ...] = (
         translation_key="co2_sensor_4_max_ppm",
         parameter_key=PARAM_CO2_SENSOR_4_MAX_PPM,
         mode=NumberMode.BOX,
-        native_unit_of_measurement=UnitOfRatio.PARTS_PER_MILLION,
+        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=NumberDeviceClass.CO2,
         entity_category=EntityCategory.CONFIG,
         icon="mdi:molecule-co2",
@@ -618,9 +618,7 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
         param = self.data
         if param is None or param.get("value_id") is None:
             raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="parameter_unavailable",
-                translation_placeholders={"parameter": self.parameter_name},
+                f"{self.parameter_name} parameter is unavailable"
             )
 
         min_value = self.native_min_value
@@ -628,13 +626,8 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
 
         if not min_value <= value <= max_value:
             raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="value_out_of_range",
-                translation_placeholders={
-                    "value": str(value),
-                    "minimum": str(min_value),
-                    "maximum": str(max_value),
-                },
+                f"Value {value} outside allowed range "
+                f"{min_value} - {max_value}"
             )
 
         decimals = int(param.get("decimals", 0))

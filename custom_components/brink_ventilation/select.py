@@ -3,14 +3,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.util import slugify
 
 from .const import (
     CN_SWITCH_INPUT_CONDITION_LABELS,
@@ -35,17 +33,12 @@ from .const import (
     RH_SENSOR_SENSITIVITY_LABELS,
     VALUE_STATE_MAP,
 )
-from .core.option_mapping import build_option_state_map
 from .entity import BrinkHomeDeviceEntity
-
-if TYPE_CHECKING:
-    from .coordinator import BrinkCoordinator
-    from .core.brink_home_cloud import BrinkHomeCloud
 
 _LOGGER = logging.getLogger(__name__)
 
 CN1_EXTERNAL_LEVEL = "4"
-CN1_EXTERNAL_LABEL = "cn1"
+CN1_EXTERNAL_LABEL = "CN1"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -231,8 +224,8 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
     def __init__(
         self,
-        client: BrinkHomeCloud,
-        coordinator: BrinkCoordinator,
+        client,
+        coordinator,
         system_id: int,
         description: BrinkSelectEntityDescription,
     ) -> None:
@@ -244,39 +237,6 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
             description.parameter_key,
         )
         self.entity_description = description
-        self._fixed_option_states = (
-            build_option_state_map(description.label_map.items())
-            if description.label_map is not None
-            else None
-        )
-
-    def _option_state_mapping(self) -> tuple[dict[str, str], set[str]]:
-        """Return safe cached states, deriving them for legacy parameter payloads."""
-        if self._fixed_option_states is not None:
-            return self._fixed_option_states
-
-        parameter = self.data or {}
-        cached_states = parameter.get("option_state_map")
-        cached_ambiguities = parameter.get("ambiguous_option_states")
-        if isinstance(cached_states, dict) and isinstance(cached_ambiguities, set):
-            return cached_states, cached_ambiguities
-
-        options = parameter.get("options")
-        if options:
-            return build_option_state_map(
-                (item["value"], item["label"]) for item in options
-            )
-
-        options_map = parameter.get("options_map")
-        if isinstance(options_map, dict):
-            return build_option_state_map(options_map.items())
-
-        reverse_options = parameter.get("reverse_options_map", {})
-        if not isinstance(reverse_options, dict):
-            return {}, set()
-        return build_option_state_map(
-            (raw_value, label) for label, raw_value in reverse_options.items()
-        )
 
     async def _async_write_value(self, value: str) -> None:
         """Write a value to the Brink device."""
@@ -284,9 +244,7 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if param is None or param.get("value_id") is None:
             raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="parameter_unavailable",
-                translation_placeholders={"parameter": self.parameter_name},
+                f"{self.parameter_name} parameter is unavailable"
             )
 
         await self.client.write_parameters(
@@ -394,43 +352,38 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         option: str,
     ) -> None:
         """Select an option."""
-        if option in {"CN1", CN1_EXTERNAL_LABEL}:
+        if option == "CN1":
             raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="external_control",
+                "CN1 is controlled by an external input."
             )
 
         param = self.data
 
         if param is None:
             raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="parameter_unavailable",
-                translation_placeholders={"parameter": self.parameter_name},
+                f"{self.parameter_name} parameter is unavailable"
             )
 
-        state_values, ambiguous_states = self._option_state_mapping()
-        option_state = slugify(option)
-        if option_state in ambiguous_states:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="ambiguous_option",
-                translation_placeholders={
-                    "option": option,
-                    "parameter": self.parameter_name,
-                },
-            )
+        reverse_label_map = self.entity_description.reverse_label_map
 
-        selected_value = state_values.get(option_state)
+        if reverse_label_map:
+            selected_value = reverse_label_map.get(option)
+        elif (reverse_options_map := param.get("reverse_options_map")) is not None:
+            selected_value = reverse_options_map.get(option)
+        else:
+            selected_value = next(
+                (
+                    item["value"]
+                    for item in param.get("options", [])
+                    if item["label"] == option
+                ),
+                None,
+            )
 
         if selected_value is None:
             raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="unknown_option",
-                translation_placeholders={
-                    "option": option,
-                    "parameter": self.parameter_name,
-                },
+                f"Unknown option '{option}' "
+                f"for {self.parameter_name}"
             )
 
         await self._async_write_value(str(selected_value))
@@ -452,40 +405,43 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
             return CN1_EXTERNAL_LABEL
 
         if (label_map := self.entity_description.label_map) is not None:
-            selected_label = label_map.get(current_value)
+            return label_map.get(current_value)
 
-        elif (options_map := param.get("options_map")) is not None:
-            selected_label = options_map.get(current_value)
-        else:
-            selected_label = next(
-                (
-                    option["label"]
-                    for option in param.get("options", [])
-                    if option["value"] == current_value
-                ),
-                None,
-            )
+        if (options_map := param.get("options_map")) is not None:
+            return options_map.get(current_value)
 
-        if selected_label is None:
-            return None
-
-        state_key = slugify(selected_label)
-        state_values, _ = self._option_state_mapping()
-        return state_key if state_values.get(state_key) == current_value else None
+        return next(
+            (
+                option["label"]
+                for option in param.get("options", [])
+                if option["value"] == current_value
+            ),
+            None,
+        )
 
     @property
     def options(self) -> list[str]:
         """Return available options."""
 
-        state_values, _ = self._option_state_mapping()
-        options = list(state_values)
+        label_map = self.entity_description.label_map
 
-        if (
-            self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL
-            and self.current_option == CN1_EXTERNAL_LABEL
-            and CN1_EXTERNAL_LABEL not in options
-        ):
-            options.append(CN1_EXTERNAL_LABEL)
+        if label_map:
+            result = list(label_map.values())
+
+            return result
+
+        param = self.data
+
+        if param is None:
+            return []
+
+        options = [
+            str(option["label"])
+            for option in param.get("options", [])
+        ]
+
+        if self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL and self.current_option == "CN1":
+            options.append("CN1")
 
         return options
 

@@ -63,6 +63,22 @@
       }
     }
   },
+  "entity_component": {
+    "fan": {
+      "preset_mode": {
+        "automatic": "Automatic",
+        "manual": "Manual",
+        "holiday": "Holiday",
+        "party": "Party",
+        "night_ventilation": "Night ventilation",
+        "Automatic mode": "Automatic",
+        "Manual": "Manual",
+        "Holiday mode": "Holiday",
+        "Party mode": "Party",
+        "Night ventilation mode": "Night ventilation"
+      }
+    }
+  },
   "entity": {
     "fan": {
       "ventilation_airflow": {
@@ -70,11 +86,11 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "automatic": "Automatic",
-              "manual": "Manual",
-              "holiday": "Holiday",
-              "party": "Party",
-              "night_ventilation": "Night ventilation"
+              "Automatic": "Automatic",
+              "Manual": "Manual",
+              "Holiday": "Holiday",
+              "Party": "Party",
+              "Night ventilation": "Night ventilation"
             }
           }
         }
@@ -84,11 +100,11 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "automatic": "Automatic",
-              "manual": "Manual",
-              "holiday": "Holiday",
-              "party": "Party",
-              "night_ventilation": "Night ventilation"
+              "Automatic": "Automatic",
+              "Manual": "Manual",
+              "Holiday": "Holiday",
+              "Party": "Party",
+              "Night ventilation": "Night ventilation"
             }
           }
         }
@@ -98,11 +114,10 @@
       "ventilation_level": {
         "name": "Ventilation level",
         "state": {
-          "level_0": "Off",
-          "level_1": "Level 1",
-          "level_2": "Level 2",
-          "level_3": "Level 3",
-          "cn1": "External input (CN1)"
+          "Level 0": "Off",
+          "Level 1": "Level 1",
+          "Level 2": "Level 2",
+          "Level 3": "Level 3"
         }
       },
       "mode_input_1": {
@@ -111,7 +126,9 @@
           "0": "Off",
           "1": "On",
           "off": "Off",
-          "on": "On"
+          "on": "On",
+          "Off": "Off",
+          "On": "On"
         }
       },
       "mode_input_2": {
@@ -120,29 +137,24 @@
           "0": "Off",
           "1": "On",
           "off": "Off",
-          "on": "On"
+          "on": "On",
+          "Off": "Off",
+          "On": "On"
         }
       },
       "contact_1_supply_fan_action": {
         "name": "Contact 1 supply fan action",
         "state": {
-          "fan_off": "Fan off",
-          "fan_runs_at_absolute_minimum": "Fan runs at absolute minimum",
-          "fan_at_setting_0": "Fan at setting 0",
-          "fan_at_setting_1": "Fan at setting 1",
-          "fan_at_setting_2": "Fan at setting 2",
-          "fan_at_setting_3": "Fan at setting 3",
-          "fan_at_step_0": "Fan at setting 0",
-          "fan_according_to_multiple_switch": "Fan according to multiple switch",
-          "fan_runs_at_absolute_maximum": "Fan runs at absolute maximum",
-          "no_supply_fan_control": "No fan control",
-          "supply_fan_off": "Supply fan off",
-          "min_ventilation_50_m3_h": "Minimum ventilation 50 m³/h",
-          "air_flow_level_1": "Airflow level 1",
-          "air_flow_level_2": "Airflow level 2",
-          "air_flow_level_3": "Airflow level 3",
-          "max_air_flow": "Maximum airflow",
-          "no_control_supply_fan": "No supply fan control"
+          "Fan off": "Fan off",
+          "Fan runs at absolute minimum": "Fan runs at absolute minimum",
+          "Fan at setting 0": "Fan at setting 0",
+          "Fan at setting 1": "Fan at setting 1",
+          "Fan at setting 2": "Fan at setting 2",
+          "Fan at setting 3": "Fan at setting 3",
+          "Fan at step 0": "Fan at setting 0",
+          "Fan according to multiple switch": "Fan according to multiple switch",
+          "Fan runs at absolute maximum": "Fan runs at absolute maximum",
+          "No supply fan control": "No fan control"
         }
       },
       "contact_1_exhaust_fan_action": {
@@ -157,21 +169,16 @@
           "fan_multiple_switch": "Fan according to multiple switch",
           "fan_absolute_maximum": "Fan runs at absolute maximum",
           "no_exhaust_fan_control": "No fan control",
-          "fan_runs_at_absolute_minimum": "Fan runs at absolute minimum",
-          "fan_at_setting_1": "Fan at setting 1",
-          "fan_at_setting_2": "Fan at setting 2",
-          "fan_at_setting_3": "Fan at setting 3",
-          "fan_at_setting_0": "Fan at setting 0",
-          "fan_at_step_0": "Fan at setting 0",
-          "fan_according_to_multiple_switch": "Fan according to multiple switch",
-          "fan_runs_at_absolute_maximum": "Fan runs at absolute maximum",
-          "extract_fan_off": "Extract fan off",
-          "min_ventilation_50_m3_h": "Minimum ventilation 50 m³/h",
-          "air_flow_level_1": "Airflow level 1",
-          "air_flow_level_2": "Airflow level 2",
-          "air_flow_level_3": "Airflow level 3",
-          "max_air_flow": "Maximum airflow",
-          "no_control_extract_fan": "No exhaust fan control"
+          "Fan off": "Fan off",
+          "Fan runs at absolute minimum": "Fan runs at absolute minimum",
+          "Fan at setting 1": "Fan at setting 1",
+          "Fan at setting 2": "Fan at setting 2",
+          "Fan at setting 3": "Fan at setting 3",
+          "Fan at setting 0": "Fan at setting 0",
+          "Fan at step 0": "Fan at setting 0",
+          "Fan according to multiple switch": "Fan according to multiple switch",
+          "Fan runs at absolute maximum": "Fan runs at absolute maximum",
+          "No exhaust fan control": "No fan control"
         }
       },
       "contact_1_type": {
@@ -181,8 +188,8 @@
           "1": "Normally closed contact",
           "make_contact": "Normally open (NO)",
           "break_contact": "Normally closed (NC)",
-          "normaly_open_contact": "Normally open (NO)",
-          "nc_contact_normally_closed": "Normally closed (NC)",
+          "Normaly open contact": "Normally open (NO)",
+          "NC contact (normally closed)": "Normally closed (NC)",
           "normally_open": "Normally open contact",
           "normally_closed": "Normally closed contact"
         }
@@ -190,23 +197,16 @@
       "contact_2_supply_fan_action": {
         "name": "Contact 2 supply fan action",
         "state": {
-          "fan_off": "Fan off",
-          "fan_runs_at_absolute_minimum": "Fan runs at absolute minimum",
-          "fan_at_setting_0": "Fan at setting 0",
-          "fan_at_setting_1": "Fan at setting 1",
-          "fan_at_setting_2": "Fan at setting 2",
-          "fan_at_setting_3": "Fan at setting 3",
-          "fan_at_step_0": "Fan at setting 0",
-          "fan_according_to_multiple_switch": "Fan according to multiple switch",
-          "fan_runs_at_absolute_maximum": "Fan runs at absolute maximum",
-          "no_supply_fan_control": "No fan control",
-          "supply_fan_off": "Supply fan off",
-          "min_ventilation_50_m3_h": "Minimum ventilation 50 m³/h",
-          "air_flow_level_1": "Airflow level 1",
-          "air_flow_level_2": "Airflow level 2",
-          "air_flow_level_3": "Airflow level 3",
-          "max_air_flow": "Maximum airflow",
-          "no_control_supply_fan": "No supply fan control"
+          "Fan off": "Fan off",
+          "Fan runs at absolute minimum": "Fan runs at absolute minimum",
+          "Fan at setting 0": "Fan at setting 0",
+          "Fan at setting 1": "Fan at setting 1",
+          "Fan at setting 2": "Fan at setting 2",
+          "Fan at setting 3": "Fan at setting 3",
+          "Fan at step 0": "Fan at setting 0",
+          "Fan according to multiple switch": "Fan according to multiple switch",
+          "Fan runs at absolute maximum": "Fan runs at absolute maximum",
+          "No supply fan control": "No fan control"
         }
       },
       "contact_2_exhaust_fan_action": {
@@ -221,21 +221,16 @@
           "fan_multiple_switch": "Fan according to multiple switch",
           "fan_absolute_maximum": "Fan runs at absolute maximum",
           "no_exhaust_fan_control": "No fan control",
-          "fan_runs_at_absolute_minimum": "Fan runs at absolute minimum",
-          "fan_at_setting_1": "Fan at setting 1",
-          "fan_at_setting_2": "Fan at setting 2",
-          "fan_at_setting_3": "Fan at setting 3",
-          "fan_at_setting_0": "Fan at setting 0",
-          "fan_at_step_0": "Fan at setting 0",
-          "fan_according_to_multiple_switch": "Fan according to multiple switch",
-          "fan_runs_at_absolute_maximum": "Fan runs at absolute maximum",
-          "extract_fan_off": "Extract fan off",
-          "min_ventilation_50_m3_h": "Minimum ventilation 50 m³/h",
-          "air_flow_level_1": "Airflow level 1",
-          "air_flow_level_2": "Airflow level 2",
-          "air_flow_level_3": "Airflow level 3",
-          "max_air_flow": "Maximum airflow",
-          "no_control_extract_fan": "No exhaust fan control"
+          "Fan off": "Fan off",
+          "Fan runs at absolute minimum": "Fan runs at absolute minimum",
+          "Fan at setting 1": "Fan at setting 1",
+          "Fan at setting 2": "Fan at setting 2",
+          "Fan at setting 3": "Fan at setting 3",
+          "Fan at setting 0": "Fan at setting 0",
+          "Fan at step 0": "Fan at setting 0",
+          "Fan according to multiple switch": "Fan according to multiple switch",
+          "Fan runs at absolute maximum": "Fan runs at absolute maximum",
+          "No exhaust fan control": "No fan control"
         }
       },
       "contact_2_type": {
@@ -245,8 +240,8 @@
           "1": "Normally closed contact",
           "make_contact": "Normally open (NO)",
           "break_contact": "Normally closed (NC)",
-          "normaly_open_contact": "Normally open (NO)",
-          "nc_contact_normally_closed": "Normally closed (NC)",
+          "Normaly open contact": "Normally open (NO)",
+          "NC contact (normally closed)": "Normally closed (NC)",
           "normally_open": "Normally open contact",
           "normally_closed": "Normally closed contact"
         }
@@ -256,10 +251,7 @@
         "state": {
           "0": "Filter warning only",
           "1": "Fault condition only",
-          "2": "Filter and fault condition",
-          "only_filtercondition": "Filter warning only",
-          "only_faultcondition": "Fault condition only",
-          "filter_and_fault_condition": "Filter and fault condition"
+          "2": "Filter and fault condition"
         }
       },
       "cn2_conditions": {
@@ -267,10 +259,7 @@
         "state": {
           "0": "Filter warning only",
           "1": "Fault condition only",
-          "2": "Filter and fault condition",
-          "only_filtercondition": "Filter warning only",
-          "only_faultcondition": "Fault condition only",
-          "filter_and_fault_condition": "Filter and fault condition"
+          "2": "Filter and fault condition"
         }
       },
       "operating_mode": {
@@ -280,7 +269,12 @@
           "manual": "Manual",
           "holiday_mode": "Holiday",
           "party_mode": "Party",
-          "night_ventilation_mode": "Night ventilation"
+          "night_ventilation_mode": "Night ventilation",
+          "Automatic mode": "Automatic",
+          "Manual": "Manual",
+          "Holiday mode": "Holiday",
+          "Party mode": "Party",
+          "Night ventilation mode": "Night ventilation"
         }
       },
       "bypass_operation": {
@@ -289,27 +283,19 @@
           "0": "Automatic",
           "1": "Bypass closed",
           "2": "Bypass open",
-          "auto_mode": "Automatic",
-          "bypass_closed": "Bypass closed",
-          "bypass_open": "Bypass open"
+          "Auto mode": "Automatic",
+          "Bypass closed": "Bypass closed",
+          "Bypass open": "Bypass open"
         }
       },
       "bypass_function": {
-        "name": "Bypass function",
-        "state": {
-          "auto_mode": "Automatic",
-          "automatic": "Automatic",
-          "bypass_closed": "Bypass closed",
-          "bypass_open": "Bypass open",
-          "off": "Off",
-          "on": "On"
-        }
+        "name": "Bypass function"
       },
       "mode_valve_24v_control": {
         "name": "24V valve mode",
         "state": {
-          "open": "Open",
-          "closed": "Closed"
+          "Open": "Open",
+          "Closed": "Closed"
         }
       },
       "valve_control": {
@@ -318,9 +304,7 @@
           "relay_output_1": "Relay output 1",
           "relay_output_2": "Relay output 2",
           "analog_output_1": "Analog output 1",
-          "analog_output_2": "Analog output 2",
-          "relais_output_1": "Relay output 1",
-          "relais_output_2": "Relay output 2"
+          "analog_output_2": "Analog output 2"
         }
       },
       "signal_output_mode": {
@@ -330,8 +314,11 @@
           "filter_condition_only": "Filter condition only",
           "fault_condition_only": "Fault condition only",
           "filter_and_fault_condition": "Filter and fault condition",
-          "only_filtercondition": "Filter condition only",
-          "only_faultcondition": "Fault condition only"
+          "Off": "Off",
+          "'Off'": "Off",
+          "Only filtercondition": "Filter condition only",
+          "Only faultcondition": "Fault condition only",
+          "Filter and fault condition": "Filter and fault condition"
         }
       },
       "cn1_switch_input_condition": {
@@ -355,16 +342,13 @@
         }
       },
       "supply_fan_control": {
-        "name": "Supply fan control",
-        "state": {
-          "constant_flow": "Constant flow",
-          "constant_rpm": "Constant speed",
-          "off": "Off"
-        }
+        "name": "Supply fan control"
       },
       "rh_sensor_sensitivity": {
         "name": "Humidity sensor sensitivity",
         "state": {
+          "-2": "Very low",
+          "-1": "Low",
           "0": "Normal",
           "1": "High",
           "2": "Very high",
@@ -428,6 +412,8 @@
       "rh_sensor_sensitivity": {
         "name": "Humidity sensor sensitivity",
         "state": {
+          "-2": "Very low",
+          "-1": "Low",
           "0": "Normal",
           "1": "High",
           "2": "Very high",
@@ -506,11 +492,10 @@
       "ventilation_level": {
         "name": "Ventilation level",
         "state": {
-          "off": "Off",
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "cn1": "External input (CN1)"
+          "Off": "Off",
+          "Low": "Low",
+          "Medium": "Medium",
+          "High": "High"
         }
       },
       "ventilation_mode_0_airflow": {
@@ -533,10 +518,10 @@
         "state": {
           "0": "No active filter message",
           "1": "Filter needs attention",
-          "no_active_filter_message": "No active filter message",
-          "filter_needs_attention": "Filter needs attention",
-          "not_dirty": "No active filter message",
-          "dirty": "Filter needs attention"
+          "No active filter message": "No active filter message",
+          "Filter needs attention": "Filter needs attention",
+          "Not dirty": "No active filter message",
+          "Dirty": "Filter needs attention"
         }
       },
       "days_until_filter_message": {
@@ -677,13 +662,15 @@
       "bypass_valve_status": {
         "name": "Bypass valve status",
         "state": {
-          "initialisation": "Initialization",
-          "opens": "Opening",
-          "open": "Open",
-          "closed": "Closed",
+          "Initialisation": "Initialization",
+          "Opens": "Opening",
+          "Open": "Open",
+          "Closed": "Closed",
           "initialization": "Initialization",
           "opening": "Opening",
-          "closing": "Closing"
+          "closing": "Closing",
+          "open": "Open",
+          "closed": "Closed"
         }
       },
       "co2_sensor_1": {
@@ -857,41 +844,6 @@
           "on": "Open"
         }
       }
-    }
-  },
-  "exceptions": {
-    "invalid_ventilation_level": {
-      "message": "Ventilation level {level} is invalid. Select a level from 0 to 3."
-    },
-    "device_unavailable": {
-      "message": "The Brink device is unavailable."
-    },
-    "airflow_parameter_unavailable": {
-      "message": "The airflow parameter for level {level} is unavailable."
-    },
-    "ventilation_parameter_unavailable": {
-      "message": "The ventilation level parameter is unavailable."
-    },
-    "operating_mode_unavailable": {
-      "message": "The operating mode parameter is unavailable."
-    },
-    "unknown_preset_mode": {
-      "message": "Preset mode {preset_mode} is not supported."
-    },
-    "parameter_unavailable": {
-      "message": "Parameter {parameter} is unavailable."
-    },
-    "external_control": {
-      "message": "CN1 is controlled by an external input."
-    },
-    "unknown_option": {
-      "message": "Option {option} is not supported for {parameter}."
-    },
-    "value_out_of_range": {
-      "message": "Value {value} is outside the allowed range of {minimum} to {maximum}."
-    },
-    "ambiguous_option": {
-      "message": "Option {option} matches multiple device values for {parameter} and cannot be selected safely."
     }
   }
 }

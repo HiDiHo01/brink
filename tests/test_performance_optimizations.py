@@ -423,7 +423,7 @@ def test_select_and_sensor_options_map_lookup():
         description=select_desc,
     )
 
-    assert select_entity.current_option == "manual"
+    assert select_entity.current_option == "Manual"
 
     sensor_desc = BrinkSensorDescription(
         key="operating_mode",
@@ -437,7 +437,7 @@ def test_select_and_sensor_options_map_lookup():
         description=sensor_desc,
     )
 
-    assert sensor_entity.native_value == "manual"
+    assert sensor_entity.native_value == "Manual"
 
 
 def test_get_blocking_error_attributes_empty():

@@ -15,9 +15,6 @@ Custom component for Home Assistant. This component is designed to integrate the
 
 ## Installation
 
-Requires Home Assistant **2026.7.0 or newer**. This minimum provides the
-`UnitOfRatio` API used by the CO₂ entities.
-
 You have two options for installation:
 
 ### HACS
@@ -31,23 +28,6 @@ You have two options for installation:
 
 - Copy "brink_home" folder to the "/config/custom_components" folder.
 - Restart HA server.
-
-## Translations
-
-English, Dutch, and German translations are included. This update uses lowercase
-keys for enum states, select options, and fan presets. Review the
-[translation migration guide](docs/translation-migration.md) before updating
-automations or scripts that use the previous English values.
-
-If different device options normalize to the same key, that ambiguous choice is
-omitted and cannot be written. Other unambiguous options remain available.
-
-## Development and maintenance
-
-- [Repository policy](AI_POLICY.md)
-- [Contributor instructions, architecture, and checks](AGENTS.md)
-- [Localization guide](LOCALIZATION.md)
-- [Home Assistant engineering requirements](home-assistant.md)
 
 ### WORKING ON:
 - Brink Renovent 180
