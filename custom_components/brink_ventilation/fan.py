@@ -27,6 +27,7 @@ from .const import (
     DOMAIN,
     FAN_OPERATING_MODE_LABELS,
     MODE_MANUAL_VALUE,
+    OPERATING_MODE_LABELS,
     PARAM_OPERATING_MODE,
     PARAM_VENTILATION_LEVEL,
     READ_WRITE_MAP,
@@ -47,7 +48,8 @@ DEFAULT_ON_PERCENTAGE = 33
 
 OPERATING_MODE_LABELS_REVERSE = {
     label: value
-    for value, label in FAN_OPERATING_MODE_LABELS.items()
+    for label_map in (FAN_OPERATING_MODE_LABELS, OPERATING_MODE_LABELS)
+    for value, label in label_map.items()
 }
 
 
@@ -197,7 +199,9 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
         if level not in (0, 1, 2, 3):
             raise HomeAssistantError(
-                f"Invalid ventilation level: {level}"
+                translation_domain=DOMAIN,
+                translation_key="invalid_ventilation_level",
+                translation_placeholders={"level": str(level)},
             )
 
         await self._async_write_level(str(level))
@@ -211,7 +215,10 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
         device = self._device
         if device is None:
-            raise HomeAssistantError("Device is unavailable")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="device_unavailable",
+            )
 
         parameters = device.parameters
 
@@ -221,7 +228,9 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
         if parameter is None or parameter.get("value_id") is None:
             raise HomeAssistantError(
-                f"Airflow parameter for level {level} is unavailable"
+                translation_domain=DOMAIN,
+                translation_key="airflow_parameter_unavailable",
+                translation_placeholders={"level": str(level)},
             )
 
         min_value = int(parameter.get("min_value") or 0)
@@ -266,7 +275,10 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     async def _async_write_level(self, level_value: str) -> None:
         ventilation = self.data
         if ventilation is None or ventilation.get("value_id") is None:
-            raise HomeAssistantError("Ventilation parameter is unavailable")
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="ventilation_parameter_unavailable",
+            )
 
         params = []
         # mode = self._operating_mode
@@ -303,31 +315,29 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     @property
     def preset_modes(self) -> list[str]:
         """Return available preset modes."""
-        # Fan preset modes currently do not support frontend translations.
-        # Use translation keys to stay aligned with SelectEntity translations
-        # and future Home Assistant support.
-        return list(FAN_OPERATING_MODE_LABELS.values())
+        return list(OPERATING_MODE_LABELS.values())
 
     @property
     def preset_mode(self) -> str | None:
+        """Return the stable translation key of the current preset."""
         mode = self._operating_mode
 
         if mode is None:
             return None
 
-        # return FAN_OPERATING_MODE_LABELS.get(str(mode.get("value")))
-        return FAN_OPERATING_MODE_LABELS.get(mode)
+        return OPERATING_MODE_LABELS.get(mode)
 
     async def async_set_preset_mode(
         self,
         preset_mode: str,
     ) -> None:
         """Set the preset mode."""
-        mode = self._operating_mode
+        mode = self._parameters.get(PARAM_OPERATING_MODE)
 
-        if mode is None or mode.get("value_id") is None:
+        if not isinstance(mode, dict) or mode.get("value_id") is None:
             raise HomeAssistantError(
-                "Operating mode parameter unavailable"
+                translation_domain=DOMAIN,
+                translation_key="operating_mode_unavailable",
             )
 
         selected_value = OPERATING_MODE_LABELS_REVERSE.get(
@@ -336,7 +346,9 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
         if selected_value is None:
             raise HomeAssistantError(
-                f"Unknown preset mode: {preset_mode}"
+                translation_domain=DOMAIN,
+                translation_key="unknown_preset_mode",
+                translation_placeholders={"preset_mode": preset_mode},
             )
 
         await self.client.write_parameters(
