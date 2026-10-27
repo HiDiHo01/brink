@@ -618,7 +618,9 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
         param = self.data
         if param is None or param.get("value_id") is None:
             raise HomeAssistantError(
-                f"{self.parameter_name} parameter is unavailable"
+                translation_domain=DOMAIN,
+                translation_key="parameter_unavailable",
+                translation_placeholders={"parameter": self.parameter_name},
             )
 
         min_value = self.native_min_value
@@ -626,8 +628,13 @@ class BrinkHomeNumberEntity(BrinkHomeDeviceEntity, NumberEntity):
 
         if not min_value <= value <= max_value:
             raise HomeAssistantError(
-                f"Value {value} outside allowed range "
-                f"{min_value} - {max_value}"
+                translation_domain=DOMAIN,
+                translation_key="value_out_of_range",
+                translation_placeholders={
+                    "value": str(value),
+                    "minimum": str(min_value),
+                    "maximum": str(max_value),
+                },
             )
 
         decimals = int(param.get("decimals", 0))
