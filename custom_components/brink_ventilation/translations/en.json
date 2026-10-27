@@ -456,6 +456,21 @@
       "dns_server": {
         "name": "DNS server"
       },
+      "owner_group_name": {
+        "name": "Owner group"
+      },
+      "iana_time_zone": {
+        "name": "Time zone"
+      },
+      "two_letter_country_code": {
+        "name": "Country"
+      },
+      "active_alert_count": {
+        "name": "Active alerts"
+      },
+      "access_level": {
+        "name": "Access level"
+      },
       "additional_temperature_sensor": {
         "name": "Additional temperature sensor"
       },

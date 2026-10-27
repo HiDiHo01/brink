@@ -30,5 +30,24 @@
         "3": "High"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "owner_group_name": {
+        "name": "Owner group"
+      },
+      "iana_time_zone": {
+        "name": "Time zone"
+      },
+      "two_letter_country_code": {
+        "name": "Country"
+      },
+      "active_alert_count": {
+        "name": "Active alerts"
+      },
+      "access_level": {
+        "name": "Access level"
+      }
+    }
   }
 }
