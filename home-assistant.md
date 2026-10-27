@@ -205,8 +205,8 @@ introduced.
 | Runtime data | Uses `hass.data`; typed `ConfigEntry.runtime_data` migration remains separate work |
 | Client boundary | Cloud client is embedded in the integration; async dependency and transport contracts need explicit evaluation |
 | Compatibility | Minimum `2026.7.0` and baseline `2026.10.3` have reproducible test environments; intermediate/future releases and physical devices need separate evidence |
-| Automated verification | HACS/hassfest workflows exist; no checked-in pytest workflow or repository-wide strict typing gate |
-| Workflow supply chain | Existing workflows contain floating action references; revised workflows must follow `AGENTS.md` |
+| Automated verification | Python 3.14 pytest matrix, scoped Ruff, HACS, and hassfest workflows exist; repository-wide strict typing remains separate work |
+| Workflow supply chain | Action references are pinned; upstream HACS/hassfest validator images remain rolling and can introduce new rules |
 | Lifecycle coverage | Existing tests do not establish comprehensive config-flow/setup/unload, auth-retry, or physical-device coverage |
 | Data/privacy hardening | Legacy raw-payload logs and loosely typed vendor boundaries require further audit |
 | Local support | Local client/UID utilities do not establish a complete local config-entry lifecycle |

@@ -27,7 +27,7 @@ The Home Assistant integration domain is `brink_ventilation`; its source is unde
 | `translations/*.json`, `strings.json`, `services.yaml` | Home Assistant catalogs, source/fallback strings, and action descriptions |
 | `sound.py` | Sound-power estimation using reference coefficients |
 | `tests/` | Behavior, performance, and localization regressions |
-| `.github/workflows/` | HACS and hassfest validation |
+| `.github/workflows/` | Python tests, Ruff, HACS, and hassfest validation |
 
 The active flow is cloud polling through `BrinkHomeCloud`, aggregation into
 `dict[int, BrinkDeviceData]`, coordinator caching, and entity reads. Runtime
@@ -220,11 +220,26 @@ test fixtures also change.
 
 ## CI/CD and dependency agreements
 
-The checked-in workflows are `.github/workflows/hacs.yml` and
-`.github/workflows/hassfest.yml`. They validate HACS packaging and Home Assistant
-integration metadata, including applicable translation schemas. Their existence
-does not prove that a workflow executed for a particular commit. There is no
-pytest workflow at this baseline; report local tests separately from GitHub CI.
+The checked-in workflows run on pull requests targeting `master`, pushes to
+`master`, weekly schedules, and manual dispatch:
+
+| Workflow | Checks |
+| --- | --- |
+| `.github/workflows/ci.yml` | Python 3.14 pytest matrix for Home Assistant `2026.7.0` and `2026.10.3`, dependency consistency/version checks, and the Ruff commands above |
+| `.github/workflows/hacs.yml` | HACS integration packaging without PR comments |
+| `.github/workflows/hassfest.yml` | Full upstream Home Assistant integration validation, including applicable translation schemas |
+
+The test matrix uses the separate minimum and baseline requirement files. Keep
+its expected Home Assistant versions aligned with those files; the workflow
+fails if the installed version differs. Ruff `0.17.3` enforces the documented
+critical-error and focused localization baseline, not repository-wide formatting.
+
+Workflows use read-only repository permissions, finite job timeouts, concurrency
+cancellation, and checkouts without persisted credentials. Action references are
+pinned to verified full commit SHAs. HACS and hassfest still use upstream rolling
+validator images internally, so a pinned action does not freeze validator rules.
+Keep local results separate from CI results: a workflow file's existence does
+not prove that it executed or passed for a particular commit.
 
 - Keep HACS and full hassfest validation applicable to relevant changes. A run
   of only hassfest's translation validator must be reported with that scope.
@@ -234,9 +249,8 @@ pytest workflow at this baseline; report local tests separately from GitHub CI.
   Do not add duplicate workflows or weaken required checks to obtain green CI.
 - Keep test dependency installation reproducible and compatible with the declared
   Python/Home Assistant pair. Update pins, tests, and compatibility claims together.
-- Existing floating action references are maintenance debt, not proof of SHA
-  pinning. Address them in a scoped workflow change rather than silently expanding
-  an unrelated fix.
+- When updating an action pin, verify its source commit and supported inputs.
+  Review upstream validator changes rather than suppressing new findings.
 - Review the published commit's check results. Report failures, skipped jobs,
   missing runs, and pending reviews accurately; do not equate mergeability with
   correctness. Do not merge or release unless the session authorizes it.
