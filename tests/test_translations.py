@@ -17,7 +17,10 @@ from custom_components.brink_ventilation.select import SELECT_DESCRIPTIONS
 from custom_components.brink_ventilation.sensor import SENSOR_DESCRIPTIONS
 
 TRANSLATIONS_DIR = (
-    Path(__file__).parent.parent / "custom_components" / "brink_ventilation" / "translations"
+    Path(__file__).parent.parent
+    / "custom_components"
+    / "brink_ventilation"
+    / "translations"
 )
 
 
@@ -54,8 +57,8 @@ def _get_entity_translation_keys_by_domain() -> dict[str, set[str]]:
     return domain_keys
 
 
-def test_entity_translation_keys_exist_in_all_languages():
-    """Test that all entity translation keys exist and contain a non-empty name in en.json, nl.json, and de.json."""
+def test_entity_translation_keys_exist_in_all_languages() -> None:
+    """Require every entity key to have a non-empty name in all three locales."""
     domain_keys = _get_entity_translation_keys_by_domain()
 
     for lang in ["en", "nl", "de"]:
@@ -70,9 +73,9 @@ def test_entity_translation_keys_exist_in_all_languages():
         for domain, keys in domain_keys.items():
             domain_entities = entities.get(domain, {})
             missing_keys = keys - set(domain_entities.keys())
-            assert (
-                not missing_keys
-            ), f"Language '{lang}' missing entity translation keys for '{domain}': {sorted(missing_keys)}"
+            assert not missing_keys, (
+                f"Language '{lang}' missing entity translation keys for '{domain}': {sorted(missing_keys)}"
+            )
 
             for key in keys:
                 entry = domain_entities[key]
@@ -80,4 +83,6 @@ def test_entity_translation_keys_exist_in_all_languages():
                     isinstance(entry, dict)
                     and isinstance(entry.get("name"), str)
                     and entry["name"].strip()
-                ), f"Language '{lang}' entity translation key '{domain}.{key}' is missing a non-empty 'name' string"
+                ), (
+                    f"Language '{lang}' entity translation key '{domain}.{key}' is missing a non-empty 'name' string"
+                )

@@ -18,6 +18,9 @@ from homeassistant.util import slugify
 from custom_components.brink_ventilation.binary_sensor import BINARY_SENSOR_DESCRIPTIONS
 from custom_components.brink_ventilation.const import DOMAIN
 from custom_components.brink_ventilation.core.brink_home_cloud import BrinkHomeCloud
+from custom_components.brink_ventilation.core.option_mapping import (
+    build_option_state_map,
+)
 from custom_components.brink_ventilation.fan import (
     FAN_DESCRIPTION,
     VENTILATION_FAN_DESCRIPTION,
@@ -92,6 +95,48 @@ RUNTIME_OPTIONS = (
         )
     ),
 )
+
+
+def _collision_parameter(
+    cache_mode: str, labels: tuple[str, str] = ("Relay-1", "Relay 1")
+) -> dict[str, Any]:
+    """Build real extracted metadata with two conflicting options and one safe option."""
+    parameters: dict[str, dict[str, Any]] = {}
+    BrinkHomeCloud._extract_parameters(
+        [
+            {
+                "parameterGroups": [
+                    {
+                        "parameters": [
+                            {
+                                "id": 16137,
+                                "name": "Valve control",
+                                "value": "1",
+                                "valueId": 123,
+                                "valueState": 1,
+                                "listItems": [
+                                    {"value": "0", "text": labels[0]},
+                                    {"value": "1", "text": labels[1]},
+                                    {"value": "2", "text": "Off"},
+                                ],
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        parameters,
+    )
+    parameter = parameters["valve_control"]
+    if cache_mode != "normalized_cache":
+        parameter.pop("option_state_map")
+        parameter.pop("ambiguous_option_states")
+    if cache_mode == "raw_cache":
+        parameter["options"] = []
+    elif cache_mode == "uncached":
+        parameter.pop("options_map")
+        parameter.pop("reverse_options_map")
+    return parameter
 
 
 def _load_translations(language: str) -> dict[str, Any]:
@@ -266,6 +311,138 @@ async def test_cached_options_accept_stable_and_legacy_inputs(option: str) -> No
     assert entity.current_option == "manual"
     await entity.async_select_option(option)
     client.write_parameters.assert_awaited_once_with(101, [(123, "1")])
+
+
+@pytest.mark.parametrize("language", LANGUAGES)
+@pytest.mark.parametrize("cache_mode", ("normalized_cache", "raw_cache", "uncached"))
+@pytest.mark.parametrize("labels", (("Relay-1", "Relay 1"), ("Relay 1", "Relay 1")))
+@pytest.mark.parametrize("option", ("relay_1", "Relay-1", "Relay 1"))
+@pytest.mark.asyncio
+async def test_ambiguous_option_states_never_write_a_device_value(
+    language: str, cache_mode: str, labels: tuple[str, str], option: str
+) -> None:
+    """Reject colliding state keys and legacy labels before any device write."""
+    parameter = _collision_parameter(cache_mode, labels)
+    client, coordinator = _create_entity_dependencies({"valve_control": parameter})
+    description = next(
+        item for item in SELECT_DESCRIPTIONS if item.parameter_key == "valve_control"
+    )
+    entity = BrinkHomeSelectEntity(client, coordinator, 101, description)
+    assert entity.options == ["off"]
+    assert entity.current_option is None
+    with pytest.raises(HomeAssistantError) as raised_error:
+        await entity.async_select_option(option)
+    _assert_translatable_error(
+        raised_error.value,
+        language,
+        "ambiguous_option",
+        {"option": option, "parameter": "Valve control"},
+    )
+    client.write_parameters.assert_not_awaited()
+
+
+@pytest.mark.parametrize("cache_mode", ("normalized_cache", "raw_cache", "uncached"))
+@pytest.mark.asyncio
+async def test_safe_choice_remains_writable_alongside_ambiguous_choices(
+    cache_mode: str,
+) -> None:
+    """Keep unambiguous options usable without exposing duplicate or misleading states."""
+    parameter = _collision_parameter(cache_mode)
+    client, coordinator = _create_entity_dependencies({"valve_control": parameter})
+    description = next(
+        item for item in SELECT_DESCRIPTIONS if item.parameter_key == "valve_control"
+    )
+    entity = BrinkHomeSelectEntity(client, coordinator, 101, description)
+    await entity.async_select_option("off")
+    client.write_parameters.assert_awaited_once_with(101, [(123, "2")])
+    assert entity.current_option == "off"
+
+
+@pytest.mark.asyncio
+async def test_same_value_aliases_do_not_create_ambiguous_choices() -> None:
+    """Collapse aliases safely when they resolve to the same raw device value."""
+    options = [{"value": "1", "label": "Relay-1"}, {"value": "1", "label": "Relay 1"}]
+    client, coordinator = _create_entity_dependencies(
+        {"valve_control": {"value": "1", "value_id": 123, "options": options}}
+    )
+    description = next(
+        item for item in SELECT_DESCRIPTIONS if item.parameter_key == "valve_control"
+    )
+    entity = BrinkHomeSelectEntity(client, coordinator, 101, description)
+    assert entity.options == ["relay_1"]
+    assert entity.current_option == "relay_1"
+    await entity.async_select_option("relay_1")
+    client.write_parameters.assert_awaited_once_with(101, [(123, "1")])
+
+
+@pytest.mark.asyncio
+async def test_fixed_label_maps_reject_normalization_collisions() -> None:
+    """Validate fixed descriptions before a reverse dictionary can discard conflicts."""
+    client, coordinator = _create_entity_dependencies(
+        {"valve_control": {"value": "1", "value_id": 123}}
+    )
+    description = BrinkSelectEntityDescription(
+        key="valve_control",
+        parameter_key="valve_control",
+        label_map={"0": "Relay-1", "1": "Relay 1", "2": "Off"},
+    )
+    entity = BrinkHomeSelectEntity(client, coordinator, 101, description)
+    assert entity.options == ["off"]
+    assert entity.current_option is None
+    with pytest.raises(HomeAssistantError) as raised_error:
+        await entity.async_select_option("relay_1")
+    assert raised_error.value.translation_key == "ambiguous_option"
+    client.write_parameters.assert_not_awaited()
+
+
+def test_extracted_normalized_options_use_cached_mapping() -> None:
+    """Keep indexed reads for normalized options on each coordinator snapshot."""
+    parameter = _collision_parameter("normalized_cache")
+    client, coordinator = _create_entity_dependencies({"valve_control": parameter})
+    description = next(
+        item for item in SELECT_DESCRIPTIONS if item.parameter_key == "valve_control"
+    )
+    entity = BrinkHomeSelectEntity(client, coordinator, 101, description)
+    state_values, ambiguities = entity._option_state_mapping()
+    assert state_values is parameter["option_state_map"]
+    assert ambiguities is parameter["ambiguous_option_states"]
+    assert state_values == {"off": "2"}
+    assert ambiguities == {"relay_1"}
+
+
+def test_third_value_does_not_reintroduce_an_ambiguous_state() -> None:
+    """Keep a conflicting state blocked even if more aliases occur later in the payload."""
+    state_values, ambiguities = build_option_state_map(
+        (("0", "Relay-1"), ("1", "Relay 1"), ("2", "Relay_1"), ("3", "Off"))
+    )
+    assert state_values == {"off": "3"}
+    assert ambiguities == {"relay_1"}
+
+
+@pytest.mark.asyncio
+async def test_absent_legacy_option_maps_fail_without_writing() -> None:
+    """Handle null optional caches as unsupported choices rather than raising attribute errors."""
+    client, coordinator = _create_entity_dependencies(
+        {
+            "valve_control": {
+                "value": "1",
+                "value_id": 123,
+                "options": [],
+                "options_map": None,
+                "reverse_options_map": None,
+            }
+        }
+    )
+    description = next(
+        item for item in SELECT_DESCRIPTIONS if item.parameter_key == "valve_control"
+    )
+    entity = BrinkHomeSelectEntity(client, coordinator, 101, description)
+    assert entity.options == []
+    assert entity.current_option is None
+    with pytest.raises(HomeAssistantError) as raised_error:
+        await entity.async_select_option("relay_1")
+    assert raised_error.value.translation_key == "unknown_option"
+    client.write_parameters.assert_not_awaited()
 
 
 @pytest.mark.parametrize(

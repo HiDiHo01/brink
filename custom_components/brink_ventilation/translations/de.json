@@ -889,6 +889,9 @@
     },
     "value_out_of_range": {
       "message": "Der Wert {value} liegt außerhalb des zulässigen Bereichs von {minimum} bis {maximum}."
+    },
+    "ambiguous_option": {
+      "message": "Die Option {option} entspricht mehreren Gerätewerten für {parameter} und kann nicht sicher ausgewählt werden."
     }
   }
 }

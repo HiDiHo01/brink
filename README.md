@@ -15,6 +15,9 @@ Custom component for Home Assistant. This component is designed to integrate the
 
 ## Installation
 
+Requires Home Assistant **2026.7.0 or newer**. This minimum provides the
+`UnitOfRatio` API used by the CO₂ entities.
+
 You have two options for installation:
 
 ### HACS
@@ -35,6 +38,9 @@ English, Dutch, and German translations are included. This update uses lowercase
 keys for enum states, select options, and fan presets. Review the
 [translation migration guide](docs/translation-migration.md) before updating
 automations or scripts that use the previous English values.
+
+If different device options normalize to the same key, that ambiguous choice is
+omitted and cannot be written. Other unambiguous options remain available.
 
 ## Development and maintenance
 

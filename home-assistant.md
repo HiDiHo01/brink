@@ -12,15 +12,13 @@ config flow and the `sensor`, `binary_sensor`, `fan`, `number`, and `select`
 platforms. Account access uses Brink's portal client. A local HTTP client and UID
 decoders also exist, but the active config flow does not select a local transport.
 
-Python 3.14 is the development target. The pinned test environment has been
-verified with Home Assistant `2026.10.3`; this is a concrete test baseline, not
-a guarantee for every Home Assistant release. Recheck current official APIs when
-changing lifecycle, flows, entities, or dependencies. Verify the minimum version
-and a current supported release before changing compatibility claims.
-
-The current `hacs.json` minimum is `2023.3.0`. That metadata is not evidence that
-all APIs used by today's code exist in that release. Reconcile metadata, actual
-API requirements, and test evidence in a dedicated compatibility change.
+Python 3.14 is the development target. Home Assistant `2026.7.0` is the declared
+minimum, providing the `UnitOfRatio.PARTS_PER_MILLION` API used by CO₂ entities.
+The minimum-version test requirements and the `2026.10.3` baseline have matching
+fixture packages; run both environments for compatibility changes as described
+in `AGENTS.md`. Recheck official APIs when changing lifecycle, flows, entities,
+or dependencies, and update the minimum, tests, and user-facing requirements
+together when introducing a newer API.
 
 ## Setup, runtime data, and unload
 
@@ -206,7 +204,7 @@ introduced.
 | Formal quality status | No `quality_scale.yaml` or evidence of completed Bronze/Silver/Gold/Platinum requirements |
 | Runtime data | Uses `hass.data`; typed `ConfigEntry.runtime_data` migration remains separate work |
 | Client boundary | Cloud client is embedded in the integration; async dependency and transport contracts need explicit evaluation |
-| Compatibility | HACS minimum predates the verified modern test environment; full version range is not established |
+| Compatibility | Minimum `2026.7.0` and baseline `2026.10.3` have reproducible test environments; intermediate/future releases and physical devices need separate evidence |
 | Automated verification | HACS/hassfest workflows exist; no checked-in pytest workflow or repository-wide strict typing gate |
 | Workflow supply chain | Existing workflows contain floating action references; revised workflows must follow `AGENTS.md` |
 | Lifecycle coverage | Existing tests do not establish comprehensive config-flow/setup/unload, auth-retry, or physical-device coverage |
