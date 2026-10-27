@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -34,7 +35,12 @@ from .const import (
     RH_SENSOR_SENSITIVITY_LABELS,
     VALUE_STATE_MAP,
 )
+from .core.option_mapping import build_option_state_map
 from .entity import BrinkHomeDeviceEntity
+
+if TYPE_CHECKING:
+    from .coordinator import BrinkCoordinator
+    from .core.brink_home_cloud import BrinkHomeCloud
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -225,8 +231,8 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
     def __init__(
         self,
-        client,
-        coordinator,
+        client: BrinkHomeCloud,
+        coordinator: BrinkCoordinator,
         system_id: int,
         description: BrinkSelectEntityDescription,
     ) -> None:
@@ -238,6 +244,39 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
             description.parameter_key,
         )
         self.entity_description = description
+        self._fixed_option_states = (
+            build_option_state_map(description.label_map.items())
+            if description.label_map is not None
+            else None
+        )
+
+    def _option_state_mapping(self) -> tuple[dict[str, str], set[str]]:
+        """Return safe cached states, deriving them for legacy parameter payloads."""
+        if self._fixed_option_states is not None:
+            return self._fixed_option_states
+
+        parameter = self.data or {}
+        cached_states = parameter.get("option_state_map")
+        cached_ambiguities = parameter.get("ambiguous_option_states")
+        if isinstance(cached_states, dict) and isinstance(cached_ambiguities, set):
+            return cached_states, cached_ambiguities
+
+        options = parameter.get("options")
+        if options:
+            return build_option_state_map(
+                (item["value"], item["label"]) for item in options
+            )
+
+        options_map = parameter.get("options_map")
+        if isinstance(options_map, dict):
+            return build_option_state_map(options_map.items())
+
+        reverse_options = parameter.get("reverse_options_map", {})
+        if not isinstance(reverse_options, dict):
+            return {}, set()
+        return build_option_state_map(
+            (raw_value, label) for label, raw_value in reverse_options.items()
+        )
 
     async def _async_write_value(self, value: str) -> None:
         """Write a value to the Brink device."""
@@ -370,29 +409,19 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
                 translation_placeholders={"parameter": self.parameter_name},
             )
 
-        reverse_label_map = self.entity_description.reverse_label_map
-
-        if reverse_label_map:
-            reverse_options = reverse_label_map
-        elif (reverse_options_map := param.get("reverse_options_map")) is not None:
-            reverse_options = reverse_options_map
-        else:
-            reverse_options = {
-                item["label"]: item["value"]
-                for item in param.get("options", [])
-            }
-
-        selected_value = reverse_options.get(option)
-        if selected_value is None:
-            option_state = slugify(option)
-            selected_value = next(
-                (
-                    raw_value
-                    for raw_label, raw_value in reverse_options.items()
-                    if slugify(raw_label) == option_state
-                ),
-                None,
+        state_values, ambiguous_states = self._option_state_mapping()
+        option_state = slugify(option)
+        if option_state in ambiguous_states:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="ambiguous_option",
+                translation_placeholders={
+                    "option": option,
+                    "parameter": self.parameter_name,
+                },
             )
+
+        selected_value = state_values.get(option_state)
 
         if selected_value is None:
             raise HomeAssistantError(
@@ -437,30 +466,24 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
                 None,
             )
 
-        return slugify(selected_label) if selected_label is not None else None
+        if selected_label is None:
+            return None
+
+        state_key = slugify(selected_label)
+        state_values, _ = self._option_state_mapping()
+        return state_key if state_values.get(state_key) == current_value else None
 
     @property
     def options(self) -> list[str]:
         """Return available options."""
 
-        label_map = self.entity_description.label_map
-
-        if label_map:
-            return [slugify(label) for label in label_map.values()]
-
-        param = self.data
-
-        if param is None:
-            return []
-
-        options = [
-            slugify(str(option["label"]))
-            for option in param.get("options", [])
-        ]
+        state_values, _ = self._option_state_mapping()
+        options = list(state_values)
 
         if (
             self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL
             and self.current_option == CN1_EXTERNAL_LABEL
+            and CN1_EXTERNAL_LABEL not in options
         ):
             options.append(CN1_EXTERNAL_LABEL)
 

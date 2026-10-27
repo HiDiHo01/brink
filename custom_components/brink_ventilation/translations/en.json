@@ -889,6 +889,9 @@
     },
     "value_out_of_range": {
       "message": "Value {value} is outside the allowed range of {minimum} to {maximum}."
+    },
+    "ambiguous_option": {
+      "message": "Option {option} matches multiple device values for {parameter} and cannot be selected safely."
     }
   }
 }

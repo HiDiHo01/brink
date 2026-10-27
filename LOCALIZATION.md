@@ -75,6 +75,12 @@ Do not assume `relay_output_1` covers the distinct emitted key
 `relais_output_1`. Detect ambiguous normalization collisions rather than choosing
 a different raw device value silently.
 
+The API extractor caches a unique state-to-value map and the set of ambiguous
+keys for each parameter snapshot. Selects omit ambiguous choices, show an unknown
+current state when it cannot be represented uniquely, and raise a translated
+`ambiguous_option` error before writing. Raw legacy labels must pass the same
+guard. Multiple labels for the same raw value may share one state safely.
+
 For selects, every advertised option and current option must use the same key
 representation. Reverse lookups must recover the original write value from both
 cached and uncached parameter data. Negative humidity sensitivity values remain

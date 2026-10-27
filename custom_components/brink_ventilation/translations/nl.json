@@ -889,6 +889,9 @@
     },
     "value_out_of_range": {
       "message": "Waarde {value} valt buiten het toegestane bereik van {minimum} tot {maximum}."
+    },
+    "ambiguous_option": {
+      "message": "Optie {option} komt overeen met meerdere apparaatwaarden voor {parameter} en kan niet veilig worden gekozen."
     }
   }
 }

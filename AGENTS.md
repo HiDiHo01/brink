@@ -15,6 +15,7 @@ The Home Assistant integration domain is `brink_ventilation`; its source is unde
 | `__init__.py` | Entry setup/unload, platform forwarding, and integration action registration |
 | `config_flow.py` | Account login, reauthentication, and polling options |
 | `core/brink_home_cloud.py` | Brink portal HTTP/OIDC, token handling, requests, and parameter extraction |
+| `core/option_mapping.py` | Safe normalized option indexing and collision detection |
 | `api.py` | Combine systems, devices, alerts, and parameters into device snapshots |
 | `models.py` | Device/alert models, enums, and shared value objects |
 | `coordinator.py` | Polling, update failures, authentication failures, and API health |
@@ -162,6 +163,18 @@ Inspect the resolved versions rather than assuming the environment tests the
 latest Home Assistant. `pytest.ini` sets `asyncio_mode = auto`; preserve correct
 async fixture handling rather than suppressing fixture warnings.
 
+The declared Home Assistant minimum is `2026.7.0`. When changing compatibility or
+Home Assistant APIs, run the complete suite in a separate clean Python 3.14
+environment using the minimum-version requirements:
+
+```shell
+python -m pip install -r requirements_test_minimum.txt
+python -m pytest -q
+```
+
+That file pins Home Assistant `2026.7.0` and its matching fixture package. Use a
+different environment for `requirements_test.txt`, which tests `2026.10.3`.
+
 For focused localization work:
 
 ```shell
@@ -174,8 +187,8 @@ Ruff `0.17.3`; install that version when reproducing the tooling environment:
 ```shell
 python -m pip install ruff==0.17.3
 python -m ruff check --select E9,F63,F7,F82 custom_components tests
-python -m ruff check tests/test_translation_regressions.py
-python -m ruff format --check tests/test_translation_regressions.py
+python -m ruff check tests/test_translations.py tests/test_translation_regressions.py custom_components/brink_ventilation/core/option_mapping.py
+python -m ruff format --check tests/test_translations.py tests/test_translation_regressions.py custom_components/brink_ventilation/core/option_mapping.py
 git diff --check
 ```
 
