@@ -55,7 +55,7 @@ def _get_entity_translation_keys_by_domain() -> dict[str, set[str]]:
 
 
 def test_entity_translation_keys_exist_in_all_languages():
-    """Test that all entity translation keys exist in en.json, nl.json, and de.json."""
+    """Test that all entity translation keys exist and contain a non-empty name in en.json, nl.json, and de.json."""
     domain_keys = _get_entity_translation_keys_by_domain()
 
     for lang in ["en", "nl", "de"]:
@@ -73,3 +73,11 @@ def test_entity_translation_keys_exist_in_all_languages():
             assert (
                 not missing_keys
             ), f"Language '{lang}' missing entity translation keys for '{domain}': {sorted(missing_keys)}"
+
+            for key in keys:
+                entry = domain_entities[key]
+                assert (
+                    isinstance(entry, dict)
+                    and isinstance(entry.get("name"), str)
+                    and entry["name"].strip()
+                ), f"Language '{lang}' entity translation key '{domain}.{key}' is missing a non-empty 'name' string"

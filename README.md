@@ -29,13 +29,6 @@ You have two options for installation:
 - Copy "brink_home" folder to the "/config/custom_components" folder.
 - Restart HA server.
 
-## Translations
-
-English, Dutch, and German translations are included. This update uses lowercase
-keys for enum states, select options, and fan presets. Review the
-[translation migration guide](docs/translation-migration.md) before updating
-automations or scripts that use the previous English values.
-
 ### WORKING ON:
 - Brink Renovent 180
 - Brink Renovent 300

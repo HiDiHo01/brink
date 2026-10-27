@@ -63,6 +63,22 @@
       }
     }
   },
+  "entity_component": {
+    "fan": {
+      "preset_mode": {
+        "automatic": "Automatik",
+        "manual": "Manuell",
+        "holiday": "Urlaub",
+        "party": "Party",
+        "night_ventilation": "Nachtlüftung",
+        "Automatic mode": "Automatik",
+        "Manual": "Manuell",
+        "Holiday mode": "Urlaub",
+        "Party mode": "Party",
+        "Night ventilation mode": "Nachtlüftung"
+      }
+    }
+  },
   "entity": {
     "fan": {
       "ventilation_airflow": {
@@ -70,11 +86,11 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "automatic": "Automatik",
-              "manual": "Manuell",
-              "holiday": "Urlaub",
-              "party": "Party",
-              "night_ventilation": "Nachtlüftung"
+              "Automatic": "Automatik",
+              "Manual": "Manuell",
+              "Holiday": "Urlaub",
+              "Party": "Party",
+              "Night ventilation": "Nachtlüftung"
             }
           }
         }
@@ -84,11 +100,11 @@
         "state_attributes": {
           "preset_mode": {
             "state": {
-              "automatic": "Automatik",
-              "manual": "Manuell",
-              "holiday": "Urlaub",
-              "party": "Party",
-              "night_ventilation": "Nachtlüftung"
+              "Automatic": "Automatik",
+              "Manual": "Manuell",
+              "Holiday": "Urlaub",
+              "Party": "Party",
+              "Night ventilation": "Nachtlüftung"
             }
           }
         }
@@ -98,11 +114,10 @@
       "ventilation_level": {
         "name": "Lüftungsstufe",
         "state": {
-          "level_0": "Aus",
-          "level_1": "Stufe 1",
-          "level_2": "Stufe 2",
-          "level_3": "Stufe 3",
-          "cn1": "Externer Eingang (CN1)"
+          "Level 0": "Aus",
+          "Level 1": "Stufe 1",
+          "Level 2": "Stufe 2",
+          "Level 3": "Stufe 3"
         }
       },
       "mode_input_1": {
@@ -111,7 +126,9 @@
           "0": "Aus",
           "1": "Ein",
           "off": "Aus",
-          "on": "Ein"
+          "on": "Ein",
+          "Off": "Aus",
+          "On": "Ein"
         }
       },
       "mode_input_2": {
@@ -120,29 +137,24 @@
           "0": "Aus",
           "1": "Ein",
           "off": "Aus",
-          "on": "Ein"
+          "on": "Ein",
+          "Off": "Aus",
+          "On": "Ein"
         }
       },
       "contact_1_supply_fan_action": {
         "name": "Kontakt 1 Zuluftventilator-Aktion",
         "state": {
-          "fan_off": "Ventilator aus",
-          "fan_runs_at_absolute_minimum": "Ventilator auf absolutem Minimum",
-          "fan_at_setting_0": "Ventilator auf Stufe 0",
-          "fan_at_setting_1": "Ventilator auf Stufe 1",
-          "fan_at_setting_2": "Ventilator auf Stufe 2",
-          "fan_at_setting_3": "Ventilator auf Stufe 3",
-          "fan_at_step_0": "Ventilator auf Stufe 0",
-          "fan_according_to_multiple_switch": "Ventilator gemäß Stufenschalter",
-          "fan_runs_at_absolute_maximum": "Ventilator auf absolutem Maximum",
-          "no_supply_fan_control": "Keine Ventilatoransteuerung",
-          "supply_fan_off": "Zuluftventilator aus",
-          "min_ventilation_50_m3_h": "Mindestlüftung 50 m³/h",
-          "air_flow_level_1": "Luftvolumenstrom Stufe 1",
-          "air_flow_level_2": "Luftvolumenstrom Stufe 2",
-          "air_flow_level_3": "Luftvolumenstrom Stufe 3",
-          "max_air_flow": "Maximaler Luftvolumenstrom",
-          "no_control_supply_fan": "Keine Zuluftventilatoransteuerung"
+          "Fan off": "Ventilator aus",
+          "Fan runs at absolute minimum": "Ventilator auf absolutem Minimum",
+          "Fan at setting 0": "Ventilator auf Stufe 0",
+          "Fan at setting 1": "Ventilator auf Stufe 1",
+          "Fan at setting 2": "Ventilator auf Stufe 2",
+          "Fan at setting 3": "Ventilator auf Stufe 3",
+          "Fan at step 0": "Ventilator auf Stufe 0",
+          "Fan according to multiple switch": "Ventilator gemäß Stufenschalter",
+          "Fan runs at absolute maximum": "Ventilator auf absolutem Maximum",
+          "No supply fan control": "Keine Ventilatoransteuerung"
         }
       },
       "contact_1_exhaust_fan_action": {
@@ -157,21 +169,16 @@
           "fan_multiple_switch": "Ventilator gemäß Stufenschalter",
           "fan_absolute_maximum": "Ventilator auf absolutem Maximum",
           "no_exhaust_fan_control": "Keine Ventilatoransteuerung",
-          "fan_runs_at_absolute_minimum": "Ventilator auf absolutem Minimum",
-          "fan_at_setting_1": "Ventilator auf Stufe 1",
-          "fan_at_setting_2": "Ventilator auf Stufe 2",
-          "fan_at_setting_3": "Ventilator auf Stufe 3",
-          "fan_at_setting_0": "Ventilator auf Stufe 0",
-          "fan_at_step_0": "Ventilator auf Stufe 0",
-          "fan_according_to_multiple_switch": "Ventilator gemäß Stufenschalter",
-          "fan_runs_at_absolute_maximum": "Ventilator auf absolutem Maximum",
-          "extract_fan_off": "Abluftventilator aus",
-          "min_ventilation_50_m3_h": "Mindestlüftung 50 m³/h",
-          "air_flow_level_1": "Luftvolumenstrom Stufe 1",
-          "air_flow_level_2": "Luftvolumenstrom Stufe 2",
-          "air_flow_level_3": "Luftvolumenstrom Stufe 3",
-          "max_air_flow": "Maximaler Luftvolumenstrom",
-          "no_control_extract_fan": "Keine Abluftventilatoransteuerung"
+          "Fan off": "Ventilator aus",
+          "Fan runs at absolute minimum": "Ventilator auf absolutem Minimum",
+          "Fan at setting 1": "Ventilator auf Stufe 1",
+          "Fan at setting 2": "Ventilator auf Stufe 2",
+          "Fan at setting 3": "Ventilator auf Stufe 3",
+          "Fan at setting 0": "Ventilator auf Stufe 0",
+          "Fan at step 0": "Ventilator auf Stufe 0",
+          "Fan according to multiple switch": "Ventilator gemäß Stufenschalter",
+          "Fan runs at absolute maximum": "Ventilator auf absolutem Maximum",
+          "No exhaust fan control": "Keine Ventilatoransteuerung"
         }
       },
       "contact_1_type": {
@@ -181,8 +188,8 @@
           "1": "Öffnerkontakt",
           "make_contact": "Schließerkontakt (NO)",
           "break_contact": "Öffnerkontakt (NC)",
-          "normaly_open_contact": "Schließerkontakt (NO)",
-          "nc_contact_normally_closed": "Öffnerkontakt (NC)",
+          "Normaly open contact": "Schließerkontakt (NO)",
+          "NC contact (normally closed)": "Öffnerkontakt (NC)",
           "normally_open": "Schließerkontakt",
           "normally_closed": "Öffnerkontakt"
         }
@@ -190,23 +197,16 @@
       "contact_2_supply_fan_action": {
         "name": "Kontakt 2 Zuluftventilator-Aktion",
         "state": {
-          "fan_off": "Ventilator aus",
-          "fan_runs_at_absolute_minimum": "Ventilator auf absolutem Minimum",
-          "fan_at_setting_0": "Ventilator auf Stufe 0",
-          "fan_at_setting_1": "Ventilator auf Stufe 1",
-          "fan_at_setting_2": "Ventilator auf Stufe 2",
-          "fan_at_setting_3": "Ventilator auf Stufe 3",
-          "fan_at_step_0": "Ventilator auf Stufe 0",
-          "fan_according_to_multiple_switch": "Ventilator gemäß Stufenschalter",
-          "fan_runs_at_absolute_maximum": "Ventilator auf absolutem Maximum",
-          "no_supply_fan_control": "Keine Ventilatoransteuerung",
-          "supply_fan_off": "Zuluftventilator aus",
-          "min_ventilation_50_m3_h": "Mindestlüftung 50 m³/h",
-          "air_flow_level_1": "Luftvolumenstrom Stufe 1",
-          "air_flow_level_2": "Luftvolumenstrom Stufe 2",
-          "air_flow_level_3": "Luftvolumenstrom Stufe 3",
-          "max_air_flow": "Maximaler Luftvolumenstrom",
-          "no_control_supply_fan": "Keine Zuluftventilatoransteuerung"
+          "Fan off": "Ventilator aus",
+          "Fan runs at absolute minimum": "Ventilator auf absolutem Minimum",
+          "Fan at setting 0": "Ventilator auf Stufe 0",
+          "Fan at setting 1": "Ventilator auf Stufe 1",
+          "Fan at setting 2": "Ventilator auf Stufe 2",
+          "Fan at setting 3": "Ventilator auf Stufe 3",
+          "Fan at step 0": "Ventilator auf Stufe 0",
+          "Fan according to multiple switch": "Ventilator gemäß Stufenschalter",
+          "Fan runs at absolute maximum": "Ventilator auf absolutem Maximum",
+          "No supply fan control": "Keine Ventilatoransteuerung"
         }
       },
       "contact_2_exhaust_fan_action": {
@@ -221,21 +221,16 @@
           "fan_multiple_switch": "Ventilator gemäß Stufenschalter",
           "fan_absolute_maximum": "Ventilator auf absolutem Maximum",
           "no_exhaust_fan_control": "Keine Ventilatoransteuerung",
-          "fan_runs_at_absolute_minimum": "Ventilator auf absolutem Minimum",
-          "fan_at_setting_1": "Ventilator auf Stufe 1",
-          "fan_at_setting_2": "Ventilator auf Stufe 2",
-          "fan_at_setting_3": "Ventilator auf Stufe 3",
-          "fan_at_setting_0": "Ventilator auf Stufe 0",
-          "fan_at_step_0": "Ventilator auf Stufe 0",
-          "fan_according_to_multiple_switch": "Ventilator gemäß Stufenschalter",
-          "fan_runs_at_absolute_maximum": "Ventilator auf absolutem Maximum",
-          "extract_fan_off": "Abluftventilator aus",
-          "min_ventilation_50_m3_h": "Mindestlüftung 50 m³/h",
-          "air_flow_level_1": "Luftvolumenstrom Stufe 1",
-          "air_flow_level_2": "Luftvolumenstrom Stufe 2",
-          "air_flow_level_3": "Luftvolumenstrom Stufe 3",
-          "max_air_flow": "Maximaler Luftvolumenstrom",
-          "no_control_extract_fan": "Keine Abluftventilatoransteuerung"
+          "Fan off": "Ventilator aus",
+          "Fan runs at absolute minimum": "Ventilator auf absolutem Minimum",
+          "Fan at setting 1": "Ventilator auf Stufe 1",
+          "Fan at setting 2": "Ventilator auf Stufe 2",
+          "Fan at setting 3": "Ventilator auf Stufe 3",
+          "Fan at setting 0": "Ventilator auf Stufe 0",
+          "Fan at step 0": "Ventilator auf Stufe 0",
+          "Fan according to multiple switch": "Ventilator gemäß Stufenschalter",
+          "Fan runs at absolute maximum": "Ventilator auf absolutem Maximum",
+          "No exhaust fan control": "Keine Ventilatoransteuerung"
         }
       },
       "contact_2_type": {
@@ -245,8 +240,8 @@
           "1": "Öffnerkontakt",
           "make_contact": "Schließerkontakt (NO)",
           "break_contact": "Öffnerkontakt (NC)",
-          "normaly_open_contact": "Schließerkontakt (NO)",
-          "nc_contact_normally_closed": "Öffnerkontakt (NC)",
+          "Normaly open contact": "Schließerkontakt (NO)",
+          "NC contact (normally closed)": "Öffnerkontakt (NC)",
           "normally_open": "Schließerkontakt",
           "normally_closed": "Öffnerkontakt"
         }
@@ -256,10 +251,7 @@
         "state": {
           "0": "Nur Filtermeldung",
           "1": "Nur Störbedingung",
-          "2": "Filter- und Störbedingung",
-          "only_filtercondition": "Nur Filtermeldung",
-          "only_faultcondition": "Nur Störbedingung",
-          "filter_and_fault_condition": "Filter- und Störbedingung"
+          "2": "Filter- und Störbedingung"
         }
       },
       "cn2_conditions": {
@@ -267,10 +259,7 @@
         "state": {
           "0": "Nur Filtermeldung",
           "1": "Nur Störbedingung",
-          "2": "Filter- und Störbedingung",
-          "only_filtercondition": "Nur Filtermeldung",
-          "only_faultcondition": "Nur Störbedingung",
-          "filter_and_fault_condition": "Filter- und Störbedingung"
+          "2": "Filter- und Störbedingung"
         }
       },
       "operating_mode": {
@@ -280,7 +269,12 @@
           "manual": "Handbetrieb",
           "holiday_mode": "Urlaubsbetrieb",
           "party_mode": "Partybetrieb",
-          "night_ventilation_mode": "Nachtlüftungsbetrieb"
+          "night_ventilation_mode": "Nachtlüftungsbetrieb",
+          "Automatic mode": "Automatikbetrieb",
+          "Manual": "Handbetrieb",
+          "Holiday mode": "Urlaubsbetrieb",
+          "Party mode": "Partybetrieb",
+          "Night ventilation mode": "Nachtlüftungsbetrieb"
         }
       },
       "bypass_operation": {
@@ -289,27 +283,19 @@
           "0": "Automatikbetrieb",
           "1": "Bypass geschlossen",
           "2": "Bypass geöffnet",
-          "auto_mode": "Automatikbetrieb",
-          "bypass_closed": "Bypass geschlossen",
-          "bypass_open": "Bypass geöffnet"
+          "Auto mode": "Automatikbetrieb",
+          "Bypass closed": "Bypass geschlossen",
+          "Bypass open": "Bypass geöffnet"
         }
       },
       "bypass_function": {
-        "name": "Bypass-Funktion",
-        "state": {
-          "auto_mode": "Automatikbetrieb",
-          "automatic": "Automatikbetrieb",
-          "bypass_closed": "Bypass geschlossen",
-          "bypass_open": "Bypass geöffnet",
-          "off": "Aus",
-          "on": "Ein"
-        }
+        "name": "Bypass-Funktion"
       },
       "mode_valve_24v_control": {
         "name": "24V Ventilmodus",
         "state": {
-          "open": "Offen",
-          "closed": "Geschlossen"
+          "Open": "Offen",
+          "Closed": "Geschlossen"
         }
       },
       "valve_control": {
@@ -318,9 +304,7 @@
           "relay_output_1": "Relaisausgang 1",
           "relay_output_2": "Relaisausgang 2",
           "analog_output_1": "Analoger Ausgang 1",
-          "analog_output_2": "Analoger Ausgang 2",
-          "relais_output_1": "Relaisausgang 1",
-          "relais_output_2": "Relaisausgang 2"
+          "analog_output_2": "Analoger Ausgang 2"
         }
       },
       "signal_output_mode": {
@@ -330,8 +314,11 @@
           "filter_condition_only": "Nur Filterbedingung",
           "fault_condition_only": "Nur Störbedingung",
           "filter_and_fault_condition": "Filter- und Störbedingung",
-          "only_filtercondition": "Nur Filterbedingung",
-          "only_faultcondition": "Nur Störbedingung"
+          "Off": "Aus",
+          "'Off'": "Aus",
+          "Only filtercondition": "Nur Filterbedingung",
+          "Only faultcondition": "Nur Störbedingung",
+          "Filter and fault condition": "Filter- und Störbedingung"
         }
       },
       "cn1_switch_input_condition": {
@@ -355,16 +342,13 @@
         }
       },
       "supply_fan_control": {
-        "name": "Ansteuerung Zuluftventilator",
-        "state": {
-          "constant_flow": "Konstanter Luftvolumenstrom",
-          "constant_rpm": "Konstante Drehzahl",
-          "off": "Aus"
-        }
+        "name": "Ansteuerung Zuluftventilator"
       },
       "rh_sensor_sensitivity": {
         "name": "Empfindlichkeit Feuchtesensor",
         "state": {
+          "-2": "Sehr niedrig",
+          "-1": "Niedrig",
           "0": "Normal",
           "1": "Hoch",
           "2": "Sehr hoch",
@@ -428,6 +412,8 @@
       "rh_sensor_sensitivity": {
         "name": "Empfindlichkeit Feuchtesensor",
         "state": {
+          "-2": "Sehr niedrig",
+          "-1": "Niedrig",
           "0": "Normal",
           "1": "Hoch",
           "2": "Sehr hoch",
@@ -506,11 +492,10 @@
       "ventilation_level": {
         "name": "Lüftungsstufe",
         "state": {
-          "off": "Aus",
-          "low": "Niedrig",
-          "medium": "Mittel",
-          "high": "Hoch",
-          "cn1": "Externer Eingang (CN1)"
+          "Off": "Aus",
+          "Low": "Niedrig",
+          "Medium": "Mittel",
+          "High": "Hoch"
         }
       },
       "ventilation_mode_0_airflow": {
@@ -533,10 +518,10 @@
         "state": {
           "0": "Keine aktive Filtermeldung",
           "1": "Filter benötigt Aufmerksamkeit",
-          "no_active_filter_message": "Keine aktive Filtermeldung",
-          "filter_needs_attention": "Filter benötigt Aufmerksamkeit",
-          "not_dirty": "Keine aktive Filtermeldung",
-          "dirty": "Filter benötigt Aufmerksamkeit"
+          "No active filter message": "Keine aktive Filtermeldung",
+          "Filter needs attention": "Filter benötigt Aufmerksamkeit",
+          "Not dirty": "Keine aktive Filtermeldung",
+          "Dirty": "Filter benötigt Aufmerksamkeit"
         }
       },
       "days_until_filter_message": {
@@ -677,13 +662,15 @@
       "bypass_valve_status": {
         "name": "Status Bypassklappe",
         "state": {
-          "initialisation": "Initialisierung",
-          "opens": "Öffnet",
-          "open": "Geöffnet",
-          "closed": "Geschlossen",
+          "Initialisation": "Initialisierung",
+          "Opens": "Öffnet",
+          "Open": "Geöffnet",
+          "Closed": "Geschlossen",
           "initialization": "Initialisierung",
           "opening": "Öffnet",
-          "closing": "Schließt"
+          "closing": "Schließt",
+          "open": "Geöffnet",
+          "closed": "Geschlossen"
         }
       },
       "co2_sensor_1": {
@@ -857,38 +844,6 @@
           "on": "Offen"
         }
       }
-    }
-  },
-  "exceptions": {
-    "invalid_ventilation_level": {
-      "message": "Die Lüftungsstufe {level} ist ungültig. Wählen Sie eine Stufe von 0 bis 3."
-    },
-    "device_unavailable": {
-      "message": "Das Brink-Gerät ist nicht verfügbar."
-    },
-    "airflow_parameter_unavailable": {
-      "message": "Der Luftvolumenstromparameter für Stufe {level} ist nicht verfügbar."
-    },
-    "ventilation_parameter_unavailable": {
-      "message": "Der Parameter für die Lüftungsstufe ist nicht verfügbar."
-    },
-    "operating_mode_unavailable": {
-      "message": "Der Parameter für die Betriebsart ist nicht verfügbar."
-    },
-    "unknown_preset_mode": {
-      "message": "Der voreingestellte Modus {preset_mode} wird nicht unterstützt."
-    },
-    "parameter_unavailable": {
-      "message": "Der Parameter {parameter} ist nicht verfügbar."
-    },
-    "external_control": {
-      "message": "CN1 wird durch einen externen Eingang gesteuert."
-    },
-    "unknown_option": {
-      "message": "Die Option {option} wird für {parameter} nicht unterstützt."
-    },
-    "value_out_of_range": {
-      "message": "Der Wert {value} liegt außerhalb des zulässigen Bereichs von {minimum} bis {maximum}."
     }
   }
 }

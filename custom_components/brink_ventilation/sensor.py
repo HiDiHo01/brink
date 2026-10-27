@@ -26,7 +26,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
-from homeassistant.util import slugify
 
 from .const import (
     ACTIVE_CONTROL_STATUS_LABELS,
@@ -914,18 +913,17 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
 
     @property
     def options(self) -> list[str] | None:
-        """Return stable translation keys for enum options."""
         if not self.entity_description.is_enum:
             return None
 
         value_map = self.entity_description.value_map
         if value_map is not None:
-            return [slugify(label) for label in value_map.values()]
+            return list(value_map.values())
 
         param = self.data
         if param is None:
             return None
-        return [slugify(item["label"]) for item in param.get("options", [])]
+        return [item["label"] for item in param.get("options", [])]
 
     @property
     def entity_registry_enabled_default(self) -> bool:
@@ -1014,7 +1012,7 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
                     mapped,
                     self.options,
                 )
-                return slugify(mapped)
+                return mapped
 
             param = self.data
 
@@ -1032,9 +1030,9 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
                     )
 
                 if selected is not None:
-                    return slugify(selected)
+                    return selected
 
-            return slugify(str(value))
+            return str(value)
 
         try:
             number = float(value)
