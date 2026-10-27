@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.util import slugify
 
 from .const import (
     CN_SWITCH_INPUT_CONDITION_LABELS,
@@ -38,7 +39,7 @@ from .entity import BrinkHomeDeviceEntity
 _LOGGER = logging.getLogger(__name__)
 
 CN1_EXTERNAL_LEVEL = "4"
-CN1_EXTERNAL_LABEL = "CN1"
+CN1_EXTERNAL_LABEL = "cn1"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -244,7 +245,9 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
 
         if param is None or param.get("value_id") is None:
             raise HomeAssistantError(
-                f"{self.parameter_name} parameter is unavailable"
+                translation_domain=DOMAIN,
+                translation_key="parameter_unavailable",
+                translation_placeholders={"parameter": self.parameter_name},
             )
 
         await self.client.write_parameters(
@@ -352,38 +355,53 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         option: str,
     ) -> None:
         """Select an option."""
-        if option == "CN1":
+        if option in {"CN1", CN1_EXTERNAL_LABEL}:
             raise HomeAssistantError(
-                "CN1 is controlled by an external input."
+                translation_domain=DOMAIN,
+                translation_key="external_control",
             )
 
         param = self.data
 
         if param is None:
             raise HomeAssistantError(
-                f"{self.parameter_name} parameter is unavailable"
+                translation_domain=DOMAIN,
+                translation_key="parameter_unavailable",
+                translation_placeholders={"parameter": self.parameter_name},
             )
 
         reverse_label_map = self.entity_description.reverse_label_map
 
         if reverse_label_map:
-            selected_value = reverse_label_map.get(option)
+            reverse_options = reverse_label_map
         elif (reverse_options_map := param.get("reverse_options_map")) is not None:
-            selected_value = reverse_options_map.get(option)
+            reverse_options = reverse_options_map
         else:
+            reverse_options = {
+                item["label"]: item["value"]
+                for item in param.get("options", [])
+            }
+
+        selected_value = reverse_options.get(option)
+        if selected_value is None:
+            option_state = slugify(option)
             selected_value = next(
                 (
-                    item["value"]
-                    for item in param.get("options", [])
-                    if item["label"] == option
+                    raw_value
+                    for raw_label, raw_value in reverse_options.items()
+                    if slugify(raw_label) == option_state
                 ),
                 None,
             )
 
         if selected_value is None:
             raise HomeAssistantError(
-                f"Unknown option '{option}' "
-                f"for {self.parameter_name}"
+                translation_domain=DOMAIN,
+                translation_key="unknown_option",
+                translation_placeholders={
+                    "option": option,
+                    "parameter": self.parameter_name,
+                },
             )
 
         await self._async_write_value(str(selected_value))
@@ -405,19 +423,21 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
             return CN1_EXTERNAL_LABEL
 
         if (label_map := self.entity_description.label_map) is not None:
-            return label_map.get(current_value)
+            selected_label = label_map.get(current_value)
 
-        if (options_map := param.get("options_map")) is not None:
-            return options_map.get(current_value)
+        elif (options_map := param.get("options_map")) is not None:
+            selected_label = options_map.get(current_value)
+        else:
+            selected_label = next(
+                (
+                    option["label"]
+                    for option in param.get("options", [])
+                    if option["value"] == current_value
+                ),
+                None,
+            )
 
-        return next(
-            (
-                option["label"]
-                for option in param.get("options", [])
-                if option["value"] == current_value
-            ),
-            None,
-        )
+        return slugify(selected_label) if selected_label is not None else None
 
     @property
     def options(self) -> list[str]:
@@ -426,9 +446,7 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
         label_map = self.entity_description.label_map
 
         if label_map:
-            result = list(label_map.values())
-
-            return result
+            return [slugify(label) for label in label_map.values()]
 
         param = self.data
 
@@ -436,12 +454,15 @@ class BrinkHomeSelectEntity(BrinkHomeDeviceEntity, SelectEntity):
             return []
 
         options = [
-            str(option["label"])
+            slugify(str(option["label"]))
             for option in param.get("options", [])
         ]
 
-        if self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL and self.current_option == "CN1":
-            options.append("CN1")
+        if (
+            self.entity_description.parameter_key == PARAM_VENTILATION_LEVEL
+            and self.current_option == CN1_EXTERNAL_LABEL
+        ):
+            options.append(CN1_EXTERNAL_LABEL)
 
         return options
 
