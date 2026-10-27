@@ -44,6 +44,12 @@ omitted and cannot be written. Other unambiguous options remain available.
 
 ## Development and maintenance
 
+GitHub Actions runs Python 3.14 tests against Home Assistant 2026.7.0 and
+2026.10.3, scoped Ruff lint/format checks, HACS validation, and hassfest. The checks
+run for pull requests to `master`, pushes to `master`, weekly, or manually from
+the [Actions page](https://github.com/HiDiHo01/brink/actions). See `AGENTS.md` for
+the exact commands and validation scope.
+
 - [Repository policy](AI_POLICY.md)
 - [Contributor instructions, architecture, and checks](AGENTS.md)
 - [Localization guide](LOCALIZATION.md)
