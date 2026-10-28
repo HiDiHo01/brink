@@ -52,6 +52,8 @@ OPERATING_MODE_LABELS_REVERSE = {
     for value, label in label_map.items()
 }
 
+FAN_PRESET_MODES: list[str] = list(OPERATING_MODE_LABELS.values())
+
 
 @dataclass(frozen=True, kw_only=True)
 class BrinkFanEntityDescription(FanEntityDescription):
@@ -154,25 +156,20 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         self._level_1_max = 133
         self._level_2_max = 216
         self._level_3_max = 300
-        device = (self.coordinator.data or {}).get(self.system_id, {})
-        parameters = device.parameters
-        ventilation = self.data or {}
-        level = int(ventilation.get("value", 0))
-        airflow_param = (
-            device.parameters.get(f"ventilation_mode_{level}_airflow", {})
-        )
+        self._current_airflow = None
 
-        self._current_airflow = (
-            parameters.get("supply_air_flow_setpoint", {})
-            .get("value")
-        )
-
-        self._max_airflow = (
-            parameters.get("ventilation_mode_3_airflow", {})
-            .get("max_value", self._max_airflow)
-        )
-
-        self._level_3_max = self._max_airflow
+        device = self._device
+        if device is not None:
+            parameters = device.parameters
+            self._current_airflow = (
+                parameters.get("supply_air_flow_setpoint", {})
+                .get("value")
+            )
+            self._max_airflow = (
+                parameters.get("ventilation_mode_3_airflow", {})
+                .get("max_value", self._max_airflow)
+            )
+            self._level_3_max = self._max_airflow
 
     async def async_set_airflow(self, airflow: int) -> None:
         """Set the target airflow."""
@@ -315,7 +312,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     @property
     def preset_modes(self) -> list[str]:
         """Return available preset modes."""
-        return list(OPERATING_MODE_LABELS.values())
+        return FAN_PRESET_MODES
 
     @property
     def preset_mode(self) -> str | None:
@@ -364,7 +361,10 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     def werkt_percentage(self) -> int | None:
         level = int((self.data or {}).get("value", 0))
 
-        device = self._device or {}
+        device = self._device
+        if device is None:
+            return None
+
         parameters = device.parameters
 
         airflow = (
@@ -467,16 +467,6 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
         param = self.data or {}
 
-        _LOGGER.debug(
-            "Coordinator data: %s",
-            self.coordinator.data,
-        )
-
-        # _LOGGER.debug(
-        #     "Entity data keys: %s",
-        #     list((self.data or {}).keys()),
-        # )
-
         attributes.update(
             {
                 "key": str(self.entity_description.key),
@@ -516,6 +506,9 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             attributes["read_write"] = "unavailable"
 
         device = self._device
+        if device is None:
+            return attributes
+
         parameters = device.parameters
         level = int(param.get("value", 0))
         airflow_param = (
@@ -590,7 +583,10 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
         except (TypeError, ValueError):
             return None
 
-        device = self._device or {}
+        device = self._device
+        if device is None:
+            return None
+
         parameters = device.parameters
 
         airflow = (
@@ -605,15 +601,17 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
         except (TypeError, ValueError):
             return None
 
+        result_percentage = round(
+            airflow_value / self._max_airflow * 100
+        )
+
         _LOGGER.debug(
             "percentage=%s airflow=%s",
-            round(int(airflow) / self._max_airflow * 100),
+            result_percentage,
             airflow,
         )
 
-        return round(
-            airflow_value / self._max_airflow * 100
-        )
+        return result_percentage
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set fan speed percentage."""
