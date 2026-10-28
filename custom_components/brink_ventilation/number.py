@@ -17,10 +17,17 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfElectricPotential,
-    UnitOfRatio,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
+
+    class UnitOfRatio:  # type: ignore[no-redef]
+        PARTS_PER_MILLION = CONCENTRATION_PARTS_PER_MILLION
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
