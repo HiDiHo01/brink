@@ -42,6 +42,13 @@ automations or scripts that use the previous English values.
 If different device options normalize to the same key, that ambiguous choice is
 omitted and cannot be written. Other unambiguous options remain available.
 
+## Alert diagnostics
+
+The active-alert sensor uses Brink's valid summary count when supplied. If that
+optional count is missing or invalid, it counts the complete fetched list of
+active, unarchived alerts for its own system. An empty successful result is `0`;
+a failed or incomplete refresh remains unavailable until a successful update.
+
 ## Development and maintenance
 
 GitHub Actions runs Python 3.14 tests against Home Assistant 2026.7.0 and

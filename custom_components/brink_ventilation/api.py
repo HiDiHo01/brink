@@ -48,7 +48,7 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
         owner_group_name = system["owner_group_name"]
         is_favorite = system["is_favorite"]
         gateway_state = system["gateway_state"]
-        active_alert_count = system["active_alert_count"]
+        reported_alert_count = system.get("active_alert_count")
         iana_time_zone = system["iana_time_zone"]
         two_letter_country_code = system["two_letter_country_code"]
         user_group_names = system["user_group_names"]
@@ -59,7 +59,14 @@ async def async_get_devices(brink_client: BrinkHomeCloud) -> dict[int, BrinkDevi
             brink_client.async_get_active_alerts(system_id),
             brink_client.get_device_data(system_id),
         )
-        _LOGGER.debug("Parsed alerts: %s", alerts)
+        active_alert_count = (
+            reported_alert_count
+            if isinstance(reported_alert_count, int)
+            and not isinstance(reported_alert_count, bool)
+            and reported_alert_count >= 0
+            else len(alerts)
+        )
+        _LOGGER.debug("Fetched %s active alerts", len(alerts))
         _LOGGER.debug("Brink Flair device: %s", device)
         gateway_type_id = device.get("gatewayTypeId")
         is_online = device.get("isOnline")
