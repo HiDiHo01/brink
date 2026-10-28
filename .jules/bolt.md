@@ -27,3 +27,9 @@
 **Learning:** `attr_fn` on the `blocking_error` binary sensor description was re-evaluating `entity.coordinator.active_alerts` four separate times during state attribute calculation (to compute `len`, highest level name, highest level numeric value, and formatted alert dictionary list). Since `active_alerts` is a dynamic property that iterates across all devices in coordinator data to build a new list on every call, this caused 4 separate list allocations and 4 full scans of active alerts per state update. Evaluating `active_alerts` once in a helper function and extracting highest level via `max(active_alerts, key=lambda a: a.level)` reduced list allocations by 75% and achieved a ~1.2x speedup in attribute evaluation.
 
 **Action:** In entity state/attribute formatters, store dynamic coordinator list properties in a local variable once and calculate aggregations (counts, max/min, mapped lists) in single-pass iterations over the local variable rather than re-querying the coordinator property.
+
+## 2025-05-23 - Static Module-Level Constant Caching for Entity Preset Modes
+
+**Learning:** Returning `list(OPERATING_MODE_LABELS.values())` dynamically in the `preset_modes` property getter allocated a new list object on every entity state update and UI query cycle. For frequently updated entities like ventilation fans, this created unnecessary allocation churn. Module-level pre-allocation of `FAN_PRESET_MODES` eliminated list creation overhead on every property evaluation. Additionally, calculating percentage values once in property getters instead of repeating calculations inside `_LOGGER.debug` calls reduced redundant arithmetic ops.
+
+**Action:** Module-level dictionary values or constant choices returned by entity properties should be defined as pre-allocated module-level tuple or list constants rather than allocated dynamically inside property getters.
