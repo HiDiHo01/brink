@@ -46,6 +46,8 @@ from .option_mapping import build_option_state_map
 
 _LOGGER = logging.getLogger(__name__)
 _TRUSTED_HOST = "www.brink-home.com"
+_ALERT_PAGE_SIZE = 10
+_MAX_ALERT_PAGES = 100
 
 
 class BrinkApiError(Exception):
@@ -192,14 +194,23 @@ class BrinkHomeCloud:
     async def async_get_alerts(
         self,
         system_id: int,
+        *,
+        page_index: int = 0,
     ) -> dict[str, object]:
-        """Return alerts for a Brink system."""
+        """Return one unarchived-alert page, rejecting invalid pagination input."""
+        if (
+            not isinstance(page_index, int)
+            or isinstance(page_index, bool)
+            or page_index < 0
+        ):
+            raise ValueError("Alert page_index must be a non-negative integer")
+
         response = await self._api_request(
             "GET",
             f"{API_V1_URL}systems/{system_id}/alerts/criterion",
             params={
-                "pageIndex": 0,
-                "pageSize": 10,
+                "pageIndex": page_index,
+                "pageSize": _ALERT_PAGE_SIZE,
                 "sortColumn": "level",
                 "sortDirection": 2,
                 "filterSpecs[0].fieldName": "isArchived",
@@ -208,33 +219,105 @@ class BrinkHomeCloud:
         )
 
         async with response:
-            payload = cast(dict[str, object], await response.json())
-            _LOGGER.debug("Brink Flair alerts payload: %s", payload)
+            payload = await response.json()
+
+        if not isinstance(payload, dict):
+            raise BrinkApiError(
+                "Brink returned an invalid alert response object",
+                error_type="invalid_response",
+            )
+
         return payload
 
     async def async_get_active_alerts(
         self,
         system_id: int,
     ) -> list[BrinkAlert]:
-        """Return active alerts for a Brink system."""
-        data = await self.async_get_alerts(system_id)
-
-        items = data.get("items")
-        if not isinstance(items, list):
-            return []
-
+        """Return all active alerts or fail without publishing a partial count."""
         alerts: list[BrinkAlert] = []
+        seen_alert_ids: set[int] = set()
+        fetched_items = 0
+        expected_total: int | None = None
 
-        for item in items:
-            if not isinstance(item, dict):
-                continue
+        for page_index in range(_MAX_ALERT_PAGES):
+            data = await self.async_get_alerts(system_id, page_index=page_index)
+            items = data.get("items")
+            total_count = data.get("totalCount")
 
-            if not item.get("isActive", False):
-                continue
+            if not isinstance(items, list):
+                raise BrinkApiError(
+                    "Brink returned an invalid alert list",
+                    error_type="invalid_response",
+                )
 
-            alerts.append(self._parse_alert(item))
+            if total_count is not None and (
+                not isinstance(total_count, int)
+                or isinstance(total_count, bool)
+                or total_count < 0
+            ):
+                raise BrinkApiError(
+                    "Brink returned an invalid alert total count",
+                    error_type="invalid_response",
+                )
 
-        return alerts
+            if total_count is not None:
+                if expected_total is not None and expected_total != total_count:
+                    raise BrinkApiError(
+                        "Brink changed the alert total while fetching alert pages",
+                        error_type="invalid_response",
+                    )
+                expected_total = total_count
+
+            for item in items:
+                if not isinstance(item, dict) or (
+                    not isinstance(item.get("id"), int)
+                    or isinstance(item["id"], bool)
+                    or item["id"] < 0
+                    or not isinstance(item.get("isActive"), bool)
+                    or not isinstance(item.get("isArchived"), bool)
+                ):
+                    raise BrinkApiError(
+                        "Brink returned an invalid alert record",
+                        error_type="invalid_response",
+                    )
+
+                alert_id = item["id"]
+                if alert_id in seen_alert_ids:
+                    raise BrinkApiError(
+                        "Brink repeated an alert while fetching alert pages",
+                        error_type="invalid_response",
+                    )
+                seen_alert_ids.add(alert_id)
+
+                if not item["isActive"] or item["isArchived"]:
+                    continue
+
+                try:
+                    alerts.append(self._parse_alert(item))
+                except (KeyError, TypeError, ValueError, OverflowError):
+                    raise BrinkApiError(
+                        "Brink returned invalid active alert details",
+                        error_type="invalid_response",
+                    ) from None
+
+            fetched_items += len(items)
+            if expected_total is not None:
+                if fetched_items > expected_total or (
+                    not items and fetched_items < expected_total
+                ):
+                    raise BrinkApiError(
+                        "Brink returned inconsistent alert pagination",
+                        error_type="invalid_response",
+                    )
+                if fetched_items == expected_total:
+                    return alerts
+            elif len(items) < _ALERT_PAGE_SIZE:
+                return alerts
+
+        raise BrinkApiError(
+            "Brink alert pagination exceeded the safe request limit",
+            error_type="invalid_response",
+        )
 
     @staticmethod
     def _parse_alert(item: dict[str, object]) -> BrinkAlert:
