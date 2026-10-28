@@ -10,6 +10,8 @@ _EPSILON = 1e-9
 
 
 class BrinkSystem(TypedDict):
+    """Describe a portal system whose optional alert summary may be absent."""
+
     system_id: int
     name: str
     serial_number: str | None
@@ -19,7 +21,7 @@ class BrinkSystem(TypedDict):
     access_level: int
     owner_group_name: str | None
     is_favorite: bool
-    active_alert_count: int
+    active_alert_count: int | None
     iana_time_zone: str
     two_letter_country_code: str
     user_group_names: list[str]

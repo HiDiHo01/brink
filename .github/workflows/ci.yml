@@ -39,6 +39,7 @@ jobs:
           python -m ruff check --output-format=github
           tests/test_translations.py
           tests/test_translation_regressions.py
+          tests/test_active_alerts.py
           tests/test_fan.py
           custom_components/brink_ventilation/fan.py
           custom_components/brink_ventilation/core/option_mapping.py
@@ -47,6 +48,7 @@ jobs:
           python -m ruff format --check
           tests/test_translations.py
           tests/test_translation_regressions.py
+          tests/test_active_alerts.py
           tests/test_fan.py
           custom_components/brink_ventilation/core/option_mapping.py
 

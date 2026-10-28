@@ -103,6 +103,14 @@ and reject affected writes with a translated error. A missing or invalid level
 must remain unknown and omit level-dependent airflow attributes. Keep shared
 preset definitions immutable and return a caller-owned list from entity getters.
 
+For `active_alert_count`, preserve a valid non-negative integer portal summary,
+including zero. Otherwise compute the count during normalization from the complete
+active, unarchived alert list for that system. Fetch all pages with a finite
+request limit; malformed records, incomplete/changing totals, and repeated pages
+must fail the refresh rather than yield zero or a partial count. This diagnostic
+remains readable for offline devices and blocking alerts when the API refresh
+succeeds. API failures still make it unavailable.
+
 ## Entities, identity, and units
 
 - Use entity descriptions and `has_entity_name` for predictable translated names.
