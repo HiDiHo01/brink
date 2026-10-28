@@ -187,8 +187,8 @@ Ruff `0.17.3`; install that version when reproducing the tooling environment:
 ```shell
 python -m pip install ruff==0.17.3
 python -m ruff check --select E9,F63,F7,F82 custom_components tests
-python -m ruff check tests/test_translations.py tests/test_translation_regressions.py custom_components/brink_ventilation/core/option_mapping.py
-python -m ruff format --check tests/test_translations.py tests/test_translation_regressions.py custom_components/brink_ventilation/core/option_mapping.py
+python -m ruff check tests/test_translations.py tests/test_translation_regressions.py tests/test_fan.py custom_components/brink_ventilation/fan.py custom_components/brink_ventilation/core/option_mapping.py
+python -m ruff format --check tests/test_translations.py tests/test_translation_regressions.py tests/test_fan.py custom_components/brink_ventilation/core/option_mapping.py
 git diff --check
 ```
 
@@ -232,7 +232,7 @@ The checked-in workflows run on pull requests targeting `master`, pushes to
 The test matrix uses the separate minimum and baseline requirement files. Keep
 its expected Home Assistant versions aligned with those files; the workflow
 fails if the installed version differs. Ruff `0.17.3` enforces the documented
-critical-error and focused localization baseline, not repository-wide formatting.
+critical-error and focused regression baseline, not repository-wide formatting.
 
 Workflows use read-only repository permissions, finite job timeouts, concurrency
 cancellation, and checkouts without persisted credentials. Action references are

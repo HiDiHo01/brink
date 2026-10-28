@@ -28,8 +28,8 @@
 
 **Action:** In entity state/attribute formatters, store dynamic coordinator list properties in a local variable once and calculate aggregations (counts, max/min, mapped lists) in single-pass iterations over the local variable rather than re-querying the coordinator property.
 
-## 2025-05-23 - Static Module-Level Constant Caching for Entity Preset Modes
+## 2026-10-28 - Isolated Presets and Current Snapshot Capacity
 
-**Learning:** Returning `list(OPERATING_MODE_LABELS.values())` dynamically in the `preset_modes` property getter allocated a new list object on every entity state update and UI query cycle. For frequently updated entities like ventilation fans, this created unnecessary allocation churn. Module-level pre-allocation of `FAN_PRESET_MODES` eliminated list creation overhead on every property evaluation. Additionally, calculating percentage values once in property getters instead of repeating calculations inside `_LOGGER.debug` calls reduced redundant arithmetic ops.
+**Learning:** Returning a shared mutable preset list lets a caller change every fan's choices. An immutable tuple can hold the canonical presets while getters return isolated lists. Capacity cached only during initialization also becomes stale after recovery or metadata changes, producing incorrect percentages and airflow writes.
 
-**Action:** Module-level dictionary values or constant choices returned by entity properties should be defined as pre-allocated module-level tuple or list constants rather than allocated dynamically inside property getters.
+**Action:** Keep shared choices immutable, calculate percentages once, and read validated control limits from the current coordinator snapshot. Test mutation isolation, empty-snapshot recovery, changed limits, unknown levels, and raw writes instead of asserting shared object identity. Do not claim allocation or benchmark improvements without measurements.

@@ -95,6 +95,14 @@ derive all diagnostic availability solely from the same failing parameter they
 describe. Precompute shared blocking-alert state during snapshot creation when
 appropriate, and read expensive aggregate properties once per formatter call.
 
+Fan capacity must follow the latest coordinator snapshot, including recovery
+after an empty snapshot and later metadata changes. Validate a positive finite
+whole-number maximum before converting percentages to m³/h; missing or invalid
+capacity must not fall back to a guessed 300 m³/h. Expose an unknown percentage
+and reject affected writes with a translated error. A missing or invalid level
+must remain unknown and omit level-dependent airflow attributes. Keep shared
+preset definitions immutable and return a caller-owned list from entity getters.
+
 ## Entities, identity, and units
 
 - Use entity descriptions and `has_entity_name` for predictable translated names.

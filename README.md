@@ -37,6 +37,13 @@ You have two options for installation:
 When the ventilation level is missing or invalid, level-dependent airflow
 attributes are omitted. Other available fan attributes remain visible.
 
+Fan percentages use the capacity in the latest device snapshot, including after
+an initially unavailable device recovers. Missing or invalid capacity leaves the
+percentage unknown and rejects airflow writes until valid metadata arrives.
+Preset lists are isolated from caller changes; an unknown ventilation level is
+not treated as level zero. Direct airflow requests retain their integer m³/h
+values instead of being rounded through a percentage conversion.
+
 ## Translations
 
 English, Dutch, and German translations are included. This update uses lowercase

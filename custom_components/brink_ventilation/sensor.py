@@ -12,20 +12,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-try:
-    from homeassistant.const import UnitOfRatio
-except ImportError:
-    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
-
-    class UnitOfRatio:  # type: ignore[no-redef]
-        PARTS_PER_MILLION = CONCENTRATION_PARTS_PER_MILLION
-
 from homeassistant.const import (
     PERCENTAGE,
     REVOLUTIONS_PER_MINUTE,
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
+    UnitOfRatio,
     UnitOfSoundPressure,
     UnitOfTemperature,
     UnitOfTime,
