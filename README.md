@@ -32,6 +32,11 @@ You have two options for installation:
 - Copy "brink_home" folder to the "/config/custom_components" folder.
 - Restart HA server.
 
+## Fan state
+
+When the ventilation level is missing or invalid, level-dependent airflow
+attributes are omitted. Other available fan attributes remain visible.
+
 ## Translations
 
 English, Dutch, and German translations are included. This update uses lowercase

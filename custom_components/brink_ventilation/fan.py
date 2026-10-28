@@ -359,7 +359,11 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
     @property
     def werkt_percentage(self) -> int | None:
-        level = int((self.data or {}).get("value", 0))
+        """Return the airflow percentage, or None when the level is unknown."""
+        try:
+            level = int((self.data or {}).get("value"))
+        except (TypeError, ValueError):
+            return None
 
         device = self._device
         if device is None:
@@ -461,7 +465,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, object]:
-        """Return extra state attributes."""
+        """Return extra attributes, omitting airflow when the level is unknown."""
 
         attributes: dict[str, object] = {}
 
@@ -510,12 +514,17 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             return attributes
 
         parameters = device.parameters
-        level = int(param.get("value", 0))
-        airflow_param = (
-            parameters.get(f"ventilation_mode_{level}_airflow", {})
-        )
+        try:
+            level = int(param.get("value"))
+        except (TypeError, ValueError):
+            level = None
 
-        attributes["airflow"] = airflow_param.get("value")
+        if level is not None:
+            airflow_param = (
+                parameters.get(f"ventilation_mode_{level}_airflow", {})
+            )
+            attributes["airflow"] = airflow_param.get("value")
+
         airflow_setpoint = (
             parameters.get("supply_air_flow_setpoint", {})
             .get("value")
