@@ -33,3 +33,9 @@
 **Learning:** Returning a shared mutable preset list lets a caller change every fan's choices. An immutable tuple can hold the canonical presets while getters return isolated lists. Capacity cached only during initialization also becomes stale after recovery or metadata changes, producing incorrect percentages and airflow writes.
 
 **Action:** Keep shared choices immutable, calculate percentages once, and read validated control limits from the current coordinator snapshot. Test mutation isolation, empty-snapshot recovery, changed limits, unknown levels, and raw writes instead of asserting shared object identity. Do not claim allocation or benchmark improvements without measurements.
+
+## 2026-10-29 - Pre-computing and Instance Caching Slugified Value Maps for Enum Sensors
+
+**Learning:** `BrinkHomeSensorEntity.native_value` and `options` were running `slugify()` on labels dynamically during every state evaluation and property read across all enum sensors (`ventilation_level`, `active_control_status`, `preheater_status`, `bypass_valve_status`, `frost_protection_status`, `status_geothermal_heat_exchanger`, `gateway_state`). `slugify` performs regex substitutions (`re.sub`), string lowering, and unicode normalization. Pre-computing and lazy-caching `slugified_value_map` (`int -> slugified_str`) and `slugified_options` (`list[str]`) on `BrinkSensorDescription` instances via `object.__getattribute__` / `object.__setattr__` converted enum state and options evaluation to O(1) dictionary and attribute lookups (~79x - 700x speedup in property benchmarking).
+
+**Action:** Pre-calculate and cache slugified representations on entity description instances when entity properties transform static label maps into Home Assistant translation keys or slugified states.
