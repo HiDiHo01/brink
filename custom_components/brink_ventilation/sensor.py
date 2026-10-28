@@ -18,12 +18,19 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
-    UnitOfRatio,
     UnitOfSoundPressure,
     UnitOfTemperature,
     UnitOfTime,
     UnitOfVolumeFlowRate,
 )
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
+
+    class UnitOfRatio:  # type: ignore[no-redef]
+        PARTS_PER_MILLION = CONCENTRATION_PARTS_PER_MILLION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import slugify
@@ -102,6 +109,34 @@ class BrinkSensorDescription(SensorEntityDescription):
     # _attr_has_entity_name = True
     value_fn: Callable[[BrinkHomeSensorEntity], StateType | None] | None = None
     attr_fn: Callable[[BrinkHomeSensorEntity], Mapping[str, object] | None] | None = None
+
+    @property
+    def slugified_value_map(self) -> dict[int, str]:
+        """Return pre-slugified value map, cached on the dataclass instance."""
+        try:
+            return object.__getattribute__(self, "_slugified_value_map_cache")
+        except AttributeError:
+            slugified = (
+                {val: slugify(label) for val, label in self.value_map.items()}
+                if self.value_map
+                else {}
+            )
+            object.__setattr__(self, "_slugified_value_map_cache", slugified)
+            return slugified
+
+    @property
+    def slugified_options(self) -> list[str]:
+        """Return pre-slugified options list, cached on the dataclass instance."""
+        try:
+            return object.__getattribute__(self, "_slugified_options_cache")
+        except AttributeError:
+            options = (
+                [slugify(label) for label in self.value_map.values()]
+                if self.value_map
+                else []
+            )
+            object.__setattr__(self, "_slugified_options_cache", options)
+            return options
 
 
 SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
@@ -918,9 +953,8 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         if not self.entity_description.is_enum:
             return None
 
-        value_map = self.entity_description.value_map
-        if value_map is not None:
-            return [slugify(label) for label in value_map.values()]
+        if self.entity_description.value_map is not None:
+            return self.entity_description.slugified_options
 
         param = self.data
         if param is None:
@@ -995,11 +1029,11 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
 
             if value_map is not None:
                 try:
-                    mapped = value_map.get(int(value))
+                    mapped_slug = self.entity_description.slugified_value_map.get(int(value))
                 except (TypeError, ValueError):
-                    mapped = None
+                    mapped_slug = None
 
-                if mapped is None:
+                if mapped_slug is None:
                     _LOGGER.debug(
                         "Unknown enum value %s for %s",
                         value,
@@ -1011,10 +1045,10 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
                     "Enum %s raw=%s mapped=%s options=%s",
                     self.parameter_key,
                     value,
-                    mapped,
+                    mapped_slug,
                     self.options,
                 )
-                return slugify(mapped)
+                return mapped_slug
 
             param = self.data
 

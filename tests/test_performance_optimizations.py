@@ -495,3 +495,67 @@ def test_get_blocking_error_attributes_with_alerts():
     assert attrs["alerts"][1]["code"] == 102
     assert attrs["alerts"][1]["level"] == "BLOCKING"
     assert attrs["alerts"][1]["level_value"] == 3
+
+
+def test_brink_sensor_description_slugified_caching():
+    """Test that slugified_value_map and slugified_options compute and cache correctly."""
+    desc = BrinkSensorDescription(
+        key="ventilation_level",
+        parameter_key="ventilation_level",
+        is_enum=True,
+        value_map={0: "Level 0", 1: "Level 1", 2: "Level 2", 3: "Level 3"},
+    )
+
+    # Test slugified_value_map
+    map1 = desc.slugified_value_map
+    assert map1 == {0: "level_0", 1: "level_1", 2: "level_2", 3: "level_3"}
+    map2 = desc.slugified_value_map
+    assert map2 is map1
+
+    # Test slugified_options
+    opts1 = desc.slugified_options
+    assert opts1 == ["level_0", "level_1", "level_2", "level_3"]
+    opts2 = desc.slugified_options
+    assert opts2 is opts1
+
+
+def test_sensor_entity_native_value_and_options_use_cached_slugs():
+    """Test that BrinkHomeSensorEntity uses cached slugified value_map and options."""
+    desc = BrinkSensorDescription(
+        key="ventilation_level",
+        parameter_key="ventilation_level",
+        is_enum=True,
+        value_map={0: "Level 0", 1: "Level 1", 2: "Level 2", 3: "Level 3"},
+    )
+
+    device = BrinkDeviceData(
+        api_is_online=True,
+        system_id=101,
+        name="Device 1",
+        internal_name="Device 1",
+        model="Flair 300",
+        serial_number="101",
+        gateway_state="online",
+        gateway_type_id=3,
+        device_is_online=True,
+        ip_address="192.168.1.50",
+        dns_server="192.168.1.1",
+        sw_version="1.0.0",
+        alerts=[],
+        parameters={"ventilation_level": {"value": "2", "value_state": 1}},
+    )
+
+    coordinator = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.data = {101: device}
+
+    entity = BrinkHomeSensorEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=desc,
+    )
+
+    assert entity.native_value == "level_2"
+    assert entity.options == ["level_0", "level_1", "level_2", "level_3"]
+    assert entity.options is desc.slugified_options
