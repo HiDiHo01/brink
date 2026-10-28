@@ -1,8 +1,11 @@
+"""Fan controls backed by the current Brink coordinator snapshot."""
+
 from __future__ import annotations
 
 import logging
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import voluptuous as vol
 from homeassistant.components.fan import (
@@ -35,6 +38,10 @@ from .const import (
 )
 from .entity import BrinkHomeDeviceEntity
 
+if TYPE_CHECKING:
+    from .coordinator import BrinkCoordinator
+    from .core.brink_home_cloud import BrinkHomeCloud
+
 _LOGGER = logging.getLogger(__name__)
 
 SERVICE_SET_AIRFLOW = "set_airflow"
@@ -52,7 +59,7 @@ OPERATING_MODE_LABELS_REVERSE = {
     for value, label in label_map.items()
 }
 
-FAN_PRESET_MODES: list[str] = list(OPERATING_MODE_LABELS.values())
+FAN_PRESET_MODES: tuple[str, ...] = tuple(OPERATING_MODE_LABELS.values())
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -139,8 +146,8 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
     def __init__(
         self,
-        client,
-        coordinator,
+        client: BrinkHomeCloud,
+        coordinator: BrinkCoordinator,
         system_id: int,
     ) -> None:
         """Initialize the fan."""
@@ -151,30 +158,102 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             self.entity_description.parameter_key,
         )
 
-        self._max_airflow = 300
         self._level_0_max = 50
         self._level_1_max = 133
         self._level_2_max = 216
-        self._level_3_max = 300
-        self._current_airflow = None
 
-        device = self._device
-        if device is not None:
-            parameters = device.parameters
-            self._current_airflow = (
-                parameters.get("supply_air_flow_setpoint", {})
-                .get("value")
+    @property
+    def _max_airflow(self) -> int | None:
+        """Return the current positive whole-number capacity in m³/h."""
+        parameter = self._parameters.get("ventilation_mode_3_airflow")
+        if not isinstance(parameter, dict):
+            return None
+
+        raw_capacity = parameter.get("max_value")
+        if isinstance(raw_capacity, bool) or not isinstance(
+            raw_capacity, (int, float, str)
+        ):
+            return None
+
+        try:
+            capacity = float(raw_capacity)
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+        if not math.isfinite(capacity) or capacity <= 0 or not capacity.is_integer():
+            return None
+        return int(capacity)
+
+    def _require_max_airflow(self) -> int:
+        """Reject airflow writes until a device and valid capacity are known."""
+        if self._device is None:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="device_unavailable",
             )
-            self._max_airflow = (
-                parameters.get("ventilation_mode_3_airflow", {})
-                .get("max_value", self._max_airflow)
+
+        max_airflow = self._max_airflow
+        if max_airflow is None:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="airflow_parameter_unavailable",
+                translation_placeholders={"level": "3"},
             )
-            self._level_3_max = self._max_airflow
+        return max_airflow
+
+    @property
+    def _ventilation_level(self) -> int | None:
+        """Return a valid level or external CN1 value without inventing zero."""
+        parameter = self.data
+        raw_level = parameter.get("value") if parameter is not None else None
+        if isinstance(raw_level, bool) or not isinstance(
+            raw_level, (int, float, str)
+        ):
+            return None
+
+        try:
+            level = int(raw_level)
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+        if isinstance(raw_level, float) and raw_level != level:
+            return None
+        return level if level in (0, 1, 2, 3, 4) else None
+
+    @property
+    def _airflow_percentage(self) -> int | None:
+        """Calculate a bounded percentage once using current cached metadata."""
+        level = self._ventilation_level
+        max_airflow = self._max_airflow
+        if level is None or max_airflow is None:
+            return None
+
+        parameter = self._parameters.get(f"ventilation_mode_{level}_airflow")
+        if not isinstance(parameter, dict):
+            return None
+        raw_airflow = parameter.get("value")
+        if isinstance(raw_airflow, bool) or not isinstance(
+            raw_airflow, (int, float, str)
+        ):
+            return None
+
+        try:
+            airflow = float(raw_airflow)
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+        if not math.isfinite(airflow) or not 0 <= airflow <= max_airflow:
+            return None
+
+        percentage = round(airflow / max_airflow * 100)
+        _LOGGER.debug("percentage=%s airflow=%s", percentage, airflow)
+        return percentage
 
     async def async_set_airflow(self, airflow: int) -> None:
         """Set the target airflow."""
 
-        target_airflow = max(0, min(airflow, self._max_airflow))
+        max_airflow = self._require_max_airflow()
+        target_airflow = max(0, min(airflow, max_airflow))
 
         if target_airflow <= self._level_0_max:
             level = 0
@@ -312,7 +391,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     @property
     def preset_modes(self) -> list[str]:
         """Return available preset modes."""
-        return FAN_PRESET_MODES
+        return list(FAN_PRESET_MODES)
 
     @property
     def preset_mode(self) -> str | None:
@@ -359,34 +438,8 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
     @property
     def werkt_percentage(self) -> int | None:
-        """Return the airflow percentage, or None when the level is unknown."""
-        try:
-            level = int((self.data or {}).get("value"))
-        except (TypeError, ValueError):
-            return None
-
-        device = self._device
-        if device is None:
-            return None
-
-        parameters = device.parameters
-
-        airflow = (
-            parameters.get(
-                f"ventilation_mode_{level}_airflow",
-                {},
-            ).get("value")
-        )
-
-        if airflow is None:
-            return None
-
-        _LOGGER.debug(
-            "percentage airflow=%s",
-            airflow,
-        )
-
-        return round(int(airflow) / self._max_airflow * 100)
+        """Return the legacy airflow percentage using the current snapshot."""
+        return self._airflow_percentage
 
     @property
     def supported_features(self) -> FanEntityFeature:
@@ -400,13 +453,9 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
 
     @property
     def is_on(self) -> bool | None:
-        param = self.data
-        if param is None or param.get("value") is None:
-            return None
-        try:
-            return int(param["value"]) != 0
-        except (TypeError, ValueError):
-            return None
+        """Return whether a known ventilation level is active."""
+        level = self._ventilation_level
+        return None if level is None else level != 0
 
     async def async_turn_on(
         self,
@@ -416,7 +465,7 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
     ) -> None:
         """Turn on the fan."""
         _LOGGER.debug(
-            "Setting fan percentage=%s speed=%s preset_mode=%s",
+            "Setting fan percentage=%s preset_mode=%s",
             percentage,
             preset_mode,
         )
@@ -514,17 +563,11 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             return attributes
 
         parameters = device.parameters
-        try:
-            level = int(param.get("value"))
-        except (TypeError, ValueError):
-            level = None
-
+        level = self._ventilation_level
         if level is not None:
-            airflow_param = (
-                parameters.get(f"ventilation_mode_{level}_airflow", {})
-            )
-            attributes["airflow"] = airflow_param.get("value")
-
+            airflow_param = parameters.get(f"ventilation_mode_{level}_airflow")
+            if isinstance(airflow_param, dict):
+                attributes["airflow"] = airflow_param.get("value")
         airflow_setpoint = (
             parameters.get("supply_air_flow_setpoint", {})
             .get("value")
@@ -584,50 +627,13 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
     @property
     def percentage(self) -> int | None:
         """Return current fan percentage."""
-
-        param = self.data or {}
-
-        try:
-            level = int(param.get("value", 0))
-        except (TypeError, ValueError):
-            return None
-
-        device = self._device
-        if device is None:
-            return None
-
-        parameters = device.parameters
-
-        airflow = (
-            parameters.get(
-                f"ventilation_mode_{level}_airflow",
-                {},
-            ).get("value")
-        )
-
-        try:
-            airflow_value = int(airflow)
-        except (TypeError, ValueError):
-            return None
-
-        result_percentage = round(
-            airflow_value / self._max_airflow * 100
-        )
-
-        _LOGGER.debug(
-            "percentage=%s airflow=%s",
-            result_percentage,
-            airflow,
-        )
-
-        return result_percentage
+        return self._airflow_percentage
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set fan speed percentage."""
 
-        target_airflow = round(
-            percentage / 100 * self._max_airflow
-        )
+        max_airflow = self._require_max_airflow()
+        target_airflow = round(percentage / 100 * max_airflow)
 
         if target_airflow <= 50:
             level = 0
@@ -651,16 +657,6 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
         )
 
         await self._async_write_level(str(level))
-
-    async def async_set_airflow(
-        self,
-        airflow: int,
-    ) -> None:
-        """Set airflow."""
-
-        await self.async_set_percentage(
-            round(airflow / self._max_airflow * 100)
-        )
 
 
 class BrinkHomeLevelFanEntity(BrinkHomeBaseFanEntity):
@@ -693,17 +689,8 @@ class BrinkHomeLevelFanEntity(BrinkHomeBaseFanEntity):
     @property
     def percentage(self) -> int | None:
         """Return the current speed percentage."""
-        param = self.data
-        if param is None:
-            return None
-
-        value = param.get("value")
-        if value is None:
-            return None
-
-        try:
-            current_value = int(value)
-        except (TypeError, ValueError):
+        current_value = self._ventilation_level
+        if current_value is None or current_value == 4:
             return None
 
         if current_value == 0:

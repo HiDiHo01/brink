@@ -13,18 +13,11 @@ from homeassistant.components.number import (
     NumberMode,
 )
 from homeassistant.config_entries import ConfigEntry
-try:
-    from homeassistant.const import UnitOfRatio
-except ImportError:
-    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
-
-    class UnitOfRatio:  # type: ignore[no-redef]
-        PARTS_PER_MILLION = CONCENTRATION_PARTS_PER_MILLION
-
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfElectricPotential,
+    UnitOfRatio,
     UnitOfTemperature,
     UnitOfVolumeFlowRate,
 )
