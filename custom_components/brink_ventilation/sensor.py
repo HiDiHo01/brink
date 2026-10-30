@@ -18,12 +18,19 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
-    UnitOfRatio,
     UnitOfSoundPressure,
     UnitOfTemperature,
     UnitOfTime,
     UnitOfVolumeFlowRate,
 )
+
+try:
+    from homeassistant.const import UnitOfRatio
+except ImportError:
+    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
+
+    class UnitOfRatio:  # type: ignore[no-redef]
+        PARTS_PER_MILLION = CONCENTRATION_PARTS_PER_MILLION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import slugify
@@ -88,7 +95,7 @@ class ValueState(IntEnum):
 
 
 # @dataclass(frozen=True)
-@dataclass(slots=True, frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True)
 class BrinkSensorDescription(SensorEntityDescription):
     """Describe a Brink sensor entity."""
 
@@ -102,6 +109,36 @@ class BrinkSensorDescription(SensorEntityDescription):
     # _attr_has_entity_name = True
     value_fn: Callable[[BrinkHomeSensorEntity], StateType | None] | None = None
     attr_fn: Callable[[BrinkHomeSensorEntity], Mapping[str, object] | None] | None = None
+
+    @property
+    def slugified_value_map(self) -> dict[int, str] | None:
+        """Return cached slugified value map for enum sensors with a value_map."""
+        if self.value_map is None:
+            return None
+        try:
+            return object.__getattribute__(self, "_slugified_value_map_cache")
+        except AttributeError:
+            mapping = {
+                key: slugify(label) for key, label in self.value_map.items()
+            }
+            object.__setattr__(self, "_slugified_value_map_cache", mapping)
+            return mapping
+
+    @property
+    def enum_options(self) -> list[str] | None:
+        """Return cached slugified options list for enum sensors with a value_map."""
+        if self.value_map is None:
+            return None
+        try:
+            return object.__getattribute__(self, "_enum_options_cache")
+        except AttributeError:
+            options = (
+                list(self.slugified_value_map.values())
+                if self.slugified_value_map
+                else []
+            )
+            object.__setattr__(self, "_enum_options_cache", options)
+            return options
 
 
 SENSOR_DESCRIPTIONS: tuple[BrinkSensorDescription, ...] = (
@@ -918,9 +955,8 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
         if not self.entity_description.is_enum:
             return None
 
-        value_map = self.entity_description.value_map
-        if value_map is not None:
-            return [slugify(label) for label in value_map.values()]
+        if (enum_opts := self.entity_description.enum_options) is not None:
+            return enum_opts
 
         param = self.data
         if param is None:
@@ -991,15 +1027,13 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             return None
 
         if self.entity_description.is_enum:
-            value_map = self.entity_description.value_map
-
-            if value_map is not None:
+            if (slug_map := self.entity_description.slugified_value_map) is not None:
                 try:
-                    mapped = value_map.get(int(value))
+                    mapped_slug = slug_map.get(int(value))
                 except (TypeError, ValueError):
-                    mapped = None
+                    mapped_slug = None
 
-                if mapped is None:
+                if mapped_slug is None:
                     _LOGGER.debug(
                         "Unknown enum value %s for %s",
                         value,
@@ -1011,10 +1045,10 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
                     "Enum %s raw=%s mapped=%s options=%s",
                     self.parameter_key,
                     value,
-                    mapped,
+                    mapped_slug,
                     self.options,
                 )
-                return slugify(mapped)
+                return mapped_slug
 
             param = self.data
 

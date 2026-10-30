@@ -231,6 +231,44 @@ def test_brink_select_description_reverse_label_map_none():
     assert reverse2 is reverse1
 
 
+def test_brink_sensor_description_caching():
+    """Test that BrinkSensorDescription caches slugified_value_map and enum_options correctly."""
+    value_map = {0: "Off", 1: "Level 1", 2: "Level 2"}
+    desc = BrinkSensorDescription(
+        key="ventilation_level",
+        parameter_key="ventilation_level",
+        is_enum=True,
+        value_map=value_map,
+    )
+
+    # First access computes and caches slugified_value_map
+    slug_map1 = desc.slugified_value_map
+    assert slug_map1 == {0: "off", 1: "level_1", 2: "level_2"}
+
+    # Second access returns the exact cached object
+    slug_map2 = desc.slugified_value_map
+    assert slug_map2 is slug_map1
+
+    # First access computes and caches enum_options
+    opts1 = desc.enum_options
+    assert opts1 == ["off", "level_1", "level_2"]
+
+    # Second access returns the exact cached object
+    opts2 = desc.enum_options
+    assert opts2 is opts1
+
+
+def test_brink_sensor_description_caching_none():
+    """Test BrinkSensorDescription cached properties when value_map is None."""
+    desc = BrinkSensorDescription(
+        key="test_sensor",
+        parameter_key="test_sensor",
+    )
+
+    assert desc.slugified_value_map is None
+    assert desc.enum_options is None
+
+
 def test_select_entity_availability_and_device_lookup():
     """Test BrinkHomeSelectEntity availability and O(1) device resolution."""
     device1 = BrinkDeviceData(

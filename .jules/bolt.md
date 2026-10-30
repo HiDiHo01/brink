@@ -33,3 +33,9 @@
 **Learning:** Returning a shared mutable preset list lets a caller change every fan's choices. An immutable tuple can hold the canonical presets while getters return isolated lists. Capacity cached only during initialization also becomes stale after recovery or metadata changes, producing incorrect percentages and airflow writes.
 
 **Action:** Keep shared choices immutable, calculate percentages once, and read validated control limits from the current coordinator snapshot. Test mutation isolation, empty-snapshot recovery, changed limits, unknown levels, and raw writes instead of asserting shared object identity. Do not claim allocation or benchmark improvements without measurements.
+
+## 2026-10-29 - Pre-computing and Caching Slugified Value Maps on Entity Descriptions
+
+**Learning:** Enum sensor entities repeatedly called `slugify()` on static `value_map` labels during `native_value` state evaluation and `.options` property reads. Because `slugify()` executes regular expressions and string manipulations, invoking it repeatedly on immutable entity description label mappings added unnecessary CPU overhead (~28x slower for native_value, ~567x slower for options) and list allocations. Removing `slots=True` on `BrinkSensorDescription` (matching `BrinkSelectEntityDescription`) enabled lazy caching of `slugified_value_map` and `enum_options` using `object.__setattr__` without polluting dataclass fields or comparison semantics.
+
+**Action:** Lazy-cache slugified dictionary mappings and option lists directly on entity descriptions when `value_map` is known at description definition time, reducing `native_value` and `options` lookups to O(1) dictionary and list reads.
