@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import IntEnum
+from types import MappingProxyType
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -18,19 +19,12 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfElectricPotential,
     UnitOfPressure,
+    UnitOfRatio,
     UnitOfSoundPressure,
     UnitOfTemperature,
     UnitOfTime,
     UnitOfVolumeFlowRate,
 )
-
-try:
-    from homeassistant.const import UnitOfRatio
-except ImportError:
-    from homeassistant.const import CONCENTRATION_PARTS_PER_MILLION
-
-    class UnitOfRatio:  # type: ignore[no-redef]
-        PARTS_PER_MILLION = CONCENTRATION_PARTS_PER_MILLION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import slugify
@@ -111,30 +105,27 @@ class BrinkSensorDescription(SensorEntityDescription):
     attr_fn: Callable[[BrinkHomeSensorEntity], Mapping[str, object] | None] | None = None
 
     @property
-    def slugified_value_map(self) -> dict[int, str]:
-        """Return pre-slugified value map, cached on the dataclass instance."""
+    def slugified_value_map(self) -> Mapping[int, str]:
+        """Return immutable translation keys cached per sensor description."""
         try:
             return object.__getattribute__(self, "_slugified_value_map_cache")
         except AttributeError:
             slugified = (
-                {val: slugify(label) for val, label in self.value_map.items()}
+                {value: slugify(label) for value, label in self.value_map.items()}
                 if self.value_map
                 else {}
             )
-            object.__setattr__(self, "_slugified_value_map_cache", slugified)
-            return slugified
+            cached_mapping = MappingProxyType(slugified)
+            object.__setattr__(self, "_slugified_value_map_cache", cached_mapping)
+            return cached_mapping
 
     @property
-    def slugified_options(self) -> list[str]:
-        """Return pre-slugified options list, cached on the dataclass instance."""
+    def slugified_options(self) -> tuple[str, ...]:
+        """Return immutable enum options derived from the cached value map."""
         try:
             return object.__getattribute__(self, "_slugified_options_cache")
         except AttributeError:
-            options = (
-                [slugify(label) for label in self.value_map.values()]
-                if self.value_map
-                else []
-            )
+            options = tuple(self.slugified_value_map.values())
             object.__setattr__(self, "_slugified_options_cache", options)
             return options
 
@@ -954,7 +945,7 @@ class BrinkHomeSensorEntity(BrinkHomeDeviceEntity, SensorEntity):
             return None
 
         if self.entity_description.value_map is not None:
-            return self.entity_description.slugified_options
+            return list(self.entity_description.slugified_options)
 
         param = self.data
         if param is None:
