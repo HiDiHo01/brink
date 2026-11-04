@@ -214,19 +214,20 @@ async def test_diagnostic_survives_a_blocking_device_alert() -> None:
 
 @pytest.mark.usefixtures("enable_custom_integrations")
 @pytest.mark.parametrize(
-    ("summary", "expected_initial_state"),
+    ("summary", "expected_initial_state", "expected_recovered_state"),
     [
-        pytest.param(None, "2", id="missing_summary"),
-        pytest.param({"alertCount": 0}, "0", id="nested_zero"),
-        pytest.param({"alertCount": 3}, "3", id="nested_positive"),
+        pytest.param(None, "2", "0", id="missing_summary"),
+        pytest.param({"alertCount": 0}, "0", "0", id="nested_zero"),
+        pytest.param({"alertCount": 3}, "3", "3", id="nested_positive"),
     ],
 )
 async def test_sensor_state_fails_and_recovers_with_real_coordinator(
     hass: HomeAssistant,
     summary: object,
     expected_initial_state: str,
+    expected_recovered_state: str,
 ) -> None:
-    """Publish a numeric count, fail safely, and restore zero after recovery."""
+    """Recover the valid portal summary or count alerts when it is missing."""
     client = _cloud_client([{"items": [_alert_payload(1), _alert_payload(2)]}])
     devices = await _fetch_devices(client, summary)
     entry = MockConfigEntry(domain=DOMAIN, data={})
@@ -264,7 +265,7 @@ async def test_sensor_state_fails_and_recovers_with_real_coordinator(
         await hass.async_block_till_done()
         recovered_state = hass.states.get(entity.entity_id)
         assert recovered_state is not None
-        assert recovered_state.state == "0"
+        assert recovered_state.state == expected_recovered_state
     finally:
         await platform.async_reset()
         await coordinator.async_shutdown()
