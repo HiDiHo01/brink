@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import MagicMock
 
+import pytest
+
 from custom_components.brink_ventilation.binary_sensor import (
     _get_blocking_error_attributes,
 )
@@ -497,8 +499,8 @@ def test_get_blocking_error_attributes_with_alerts():
     assert attrs["alerts"][1]["level_value"] == 3
 
 
-def test_brink_sensor_description_slugified_caching():
-    """Test that slugified_value_map and slugified_options compute and cache correctly."""
+def test_brink_sensor_description_slugified_caching() -> None:
+    """Keep cached enum keys and options immutable without altering identity."""
     desc = BrinkSensorDescription(
         key="ventilation_level",
         parameter_key="ventilation_level",
@@ -506,21 +508,33 @@ def test_brink_sensor_description_slugified_caching():
         value_map={0: "Level 0", 1: "Level 1", 2: "Level 2", 3: "Level 3"},
     )
 
-    # Test slugified_value_map
-    map1 = desc.slugified_value_map
-    assert map1 == {0: "level_0", 1: "level_1", 2: "level_2", 3: "level_3"}
-    map2 = desc.slugified_value_map
-    assert map2 is map1
+    cached_mapping = desc.slugified_value_map
+    assert cached_mapping == {0: "level_0", 1: "level_1", 2: "level_2", 3: "level_3"}
+    assert desc.slugified_value_map is cached_mapping
 
-    # Test slugified_options
-    opts1 = desc.slugified_options
-    assert opts1 == ["level_0", "level_1", "level_2", "level_3"]
-    opts2 = desc.slugified_options
-    assert opts2 is opts1
+    with pytest.raises(TypeError):
+        cached_mapping[0] = "modified"
+
+    cached_options = desc.slugified_options
+    assert cached_options == ("level_0", "level_1", "level_2", "level_3")
+    assert desc.slugified_options is cached_options
+    assert desc.slugified_value_map[0] == "level_0"
 
 
-def test_sensor_entity_native_value_and_options_use_cached_slugs():
-    """Test that BrinkHomeSensorEntity uses cached slugified value_map and options."""
+def test_brink_sensor_description_without_value_map() -> None:
+    """Keep an empty immutable cache when a description has no static map."""
+    desc = BrinkSensorDescription(
+        key="dynamic_enum",
+        parameter_key="dynamic_enum",
+        is_enum=True,
+    )
+
+    assert not desc.slugified_value_map
+    assert desc.slugified_options == ()
+
+
+def test_sensor_entity_native_value_and_options_use_cached_slugs() -> None:
+    """Return isolated option lists while reusing immutable translation keys."""
     desc = BrinkSensorDescription(
         key="ventilation_level",
         parameter_key="ventilation_level",
@@ -556,6 +570,22 @@ def test_sensor_entity_native_value_and_options_use_cached_slugs():
         description=desc,
     )
 
+    second_entity = BrinkHomeSensorEntity(
+        client=MagicMock(),
+        coordinator=coordinator,
+        system_id=101,
+        description=desc,
+    )
+
+    expected_options = ["level_0", "level_1", "level_2", "level_3"]
+    first_options = entity.options
+
     assert entity.native_value == "level_2"
-    assert entity.options == ["level_0", "level_1", "level_2", "level_3"]
-    assert entity.options is desc.slugified_options
+    assert first_options == expected_options
+    assert first_options is not second_entity.options
+
+    first_options.clear()
+    assert entity.options == expected_options
+    assert second_entity.options == expected_options
+    assert entity.native_value == "level_2"
+    assert desc.slugified_options == tuple(expected_options)
