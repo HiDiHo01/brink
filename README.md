@@ -56,9 +56,11 @@ omitted and cannot be written. Other unambiguous options remain available.
 
 ## Alert diagnostics
 
-The active-alert sensor uses Brink's valid summary count when supplied. If that
-optional count is missing or invalid, it counts the complete fetched list of
-active, unarchived alerts for its own system. An empty successful result is `0`;
+The active-alert sensor accepts Brink's valid summary count as either an integer
+or a nested `{"alertCount": 0}` object. The value is normalized to a
+non-negative integer before publishing it to Home Assistant. If the optional
+count is missing or invalid, it counts the complete fetched list of active,
+unarchived alerts for its own system. An empty successful result is `0`;
 a failed or incomplete refresh remains unavailable until a successful update.
 
 ## Development and maintenance
