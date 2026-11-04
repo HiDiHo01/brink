@@ -521,6 +521,29 @@ def test_brink_sensor_description_slugified_caching() -> None:
     assert desc.slugified_value_map[0] == "level_0"
 
 
+def test_brink_sensor_description_cache_preserves_equality() -> None:
+    """Warming one description's caches must not affect dataclass equality."""
+    first_description = BrinkSensorDescription(
+        key="ventilation_level",
+        parameter_key="ventilation_level",
+        is_enum=True,
+        value_map={0: "Off", 1: "Low"},
+    )
+    second_description = BrinkSensorDescription(
+        key="ventilation_level",
+        parameter_key="ventilation_level",
+        is_enum=True,
+        value_map={0: "Off", 1: "Low"},
+    )
+
+    assert first_description == second_description
+
+    _ = first_description.slugified_value_map
+    _ = first_description.slugified_options
+
+    assert first_description == second_description
+
+
 def test_brink_sensor_description_without_value_map() -> None:
     """Keep an empty immutable cache when a description has no static map."""
     desc = BrinkSensorDescription(
