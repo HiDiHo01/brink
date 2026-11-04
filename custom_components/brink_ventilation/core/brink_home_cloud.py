@@ -372,6 +372,18 @@ class BrinkHomeCloud:
             if system_id is None:
                 continue
 
+            raw_alert_count = item.get("activeAlertCount")
+            if isinstance(raw_alert_count, dict):
+                raw_alert_count = raw_alert_count.get("alertCount")
+
+            normalized_alert_count = (
+                raw_alert_count
+                if isinstance(raw_alert_count, int)
+                and not isinstance(raw_alert_count, bool)
+                and raw_alert_count >= 0
+                else None
+            )
+
             system: dict[str, object] = {
                 "name": item.get("systemName") or "Brink",
                 "serial_number": item.get("serialNumber"),
@@ -382,7 +394,7 @@ class BrinkHomeCloud:
                 "owner_group_name": item.get("ownerGroupName"),
                 "is_favorite": item.get("isFavorite"),
                 "gateway_state": item.get("gatewayState"),
-                "active_alert_count": item.get("activeAlertCount"),
+                "active_alert_count": normalized_alert_count,
                 "iana_time_zone": item.get("ianaTimeZone"),
                 "two_letter_country_code": item.get("twoLetterCountryCode"),
                 "user_group_names": item.get("userGroupNames"),
