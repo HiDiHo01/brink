@@ -91,7 +91,22 @@ def _count_sensor(
 
 @pytest.mark.parametrize(
     "summary",
-    [pytest.param(_OMITTED, id="omitted"), None, -1, True, False, "invalid", "2", 1.5],
+    [
+        pytest.param(_OMITTED, id="omitted"),
+        None,
+        -1,
+        True,
+        False,
+        "invalid",
+        "2",
+        1.5,
+        {"alertCount": -1},
+        {"alertCount": True},
+        {"alertCount": "2"},
+        {"alertCount": 1.5},
+        {"unexpected": 2},
+        {},
+    ],
 )
 @pytest.mark.parametrize("alert_count", [0, 2])
 @pytest.mark.parametrize("device_is_online", [False, True])
@@ -151,12 +166,23 @@ async def test_malformed_alert_list_is_not_a_confirmed_zero(
         await client.async_get_active_alerts(101)
 
 
-@pytest.mark.parametrize("summary", [0, 7])
-async def test_valid_portal_summary_is_preserved(summary: int) -> None:
-    """Retain the existing authoritative summary, including a confirmed zero."""
+@pytest.mark.parametrize(
+    ("summary", "expected_count"),
+    [
+        pytest.param(0, 0, id="flat_zero"),
+        pytest.param(7, 7, id="flat_positive"),
+        pytest.param({"alertCount": 0}, 0, id="nested_zero"),
+        pytest.param({"alertCount": 7}, 7, id="nested_positive"),
+    ],
+)
+async def test_valid_portal_summary_is_preserved(
+    summary: object, expected_count: int
+) -> None:
+    """Normalize both portal summary formats without losing a valid zero."""
     client = _cloud_client([{"items": [_alert_payload(1), _alert_payload(2)]}])
     devices = await _fetch_devices(client, summary)
-    assert devices[101].active_alert_count == summary
+    assert devices[101].active_alert_count == expected_count
+    assert type(devices[101].active_alert_count) is int
 
 
 async def test_counts_belong_to_their_own_system() -> None:
@@ -187,12 +213,22 @@ async def test_diagnostic_survives_a_blocking_device_alert() -> None:
 
 
 @pytest.mark.usefixtures("enable_custom_integrations")
+@pytest.mark.parametrize(
+    ("summary", "expected_initial_state"),
+    [
+        pytest.param(None, "2", id="missing_summary"),
+        pytest.param({"alertCount": 0}, "0", id="nested_zero"),
+        pytest.param({"alertCount": 3}, "3", id="nested_positive"),
+    ],
+)
 async def test_sensor_state_fails_and_recovers_with_real_coordinator(
     hass: HomeAssistant,
+    summary: object,
+    expected_initial_state: str,
 ) -> None:
-    """Expose unavailable on failed refresh and a real zero after recovery."""
+    """Publish a numeric count, fail safely, and restore zero after recovery."""
     client = _cloud_client([{"items": [_alert_payload(1), _alert_payload(2)]}])
-    devices = await _fetch_devices(client, None)
+    devices = await _fetch_devices(client, summary)
     entry = MockConfigEntry(domain=DOMAIN, data={})
     entry.add_to_hass(hass)
     coordinator = BrinkCoordinator(hass, entry, client, scan_interval=60)
@@ -213,7 +249,7 @@ async def test_sensor_state_fails_and_recovers_with_real_coordinator(
         await platform.async_add_entities([entity])
         initial_state = hass.states.get(entity.entity_id)
         assert initial_state is not None
-        assert initial_state.state == "2"
+        assert initial_state.state == expected_initial_state
 
         client.async_get_alerts.side_effect = BrinkApiError("Alert request failed")
         await coordinator.async_refresh()
