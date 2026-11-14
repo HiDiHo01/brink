@@ -201,6 +201,75 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             )
         return max_airflow
 
+    @staticmethod
+    def _is_airflow_writable(parameter: dict[str, object]) -> bool:
+        """Require explicit vendor write access before selecting or writing airflow."""
+        access = parameter.get("read_write")
+        return (
+            isinstance(access, int)
+            and not isinstance(access, bool)
+            and READ_WRITE_MAP.get(access) == "read-write"
+        )
+
+    @staticmethod
+    def _validated_airflow_bounds(
+        parameter: dict[str, object],
+    ) -> tuple[float, float] | None:
+        """Return finite writable airflow limits from the current device snapshot."""
+        minimum_raw = parameter.get("min_value")
+        maximum_raw = parameter.get("max_value")
+        if (
+            minimum_raw is None
+            or maximum_raw is None
+            or isinstance(minimum_raw, bool)
+            or isinstance(maximum_raw, bool)
+        ):
+            return None
+        try:
+            minimum = float(minimum_raw)
+            maximum = float(maximum_raw)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        if not math.isfinite(minimum) or not math.isfinite(maximum):
+            return None
+        return (minimum, maximum) if 0 <= minimum <= maximum else None
+
+    def _select_airflow_level(self, airflow: int) -> int:
+        """Choose a writable level able to deliver the requested exact airflow."""
+        if airflow <= self._level_0_max:
+            preferred_level = 0
+        elif airflow <= self._level_1_max:
+            preferred_level = 1
+        elif airflow <= self._level_2_max:
+            preferred_level = 2
+        else:
+            preferred_level = 3
+
+        for level in range(preferred_level, 4):
+            parameter = self._parameters.get(f"ventilation_mode_{level}_airflow")
+            if not isinstance(parameter, dict) or not self._is_airflow_writable(
+                parameter
+            ):
+                continue
+            limits = self._validated_airflow_bounds(parameter)
+            value_id = parameter.get("value_id")
+            if limits is None or not limits[0] <= airflow <= limits[1]:
+                continue
+            if isinstance(value_id, bool) or not isinstance(value_id, (int, str)):
+                continue
+            try:
+                if int(value_id) <= 0:
+                    continue
+            except (TypeError, ValueError, OverflowError):
+                continue
+            return level
+
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="airflow_parameter_unavailable",
+            translation_placeholders={"level": str(preferred_level)},
+        )
+
     @property
     def _ventilation_level(self) -> int | None:
         """Return a valid level or external CN1 value without inventing zero."""
@@ -253,18 +322,23 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
         """Set the target airflow."""
 
         max_airflow = self._require_max_airflow()
-        target_airflow = max(0, min(airflow, max_airflow))
+        if (
+            isinstance(airflow, bool)
+            or not isinstance(airflow, int)
+            or not 0 <= airflow <= max_airflow
+        ):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="value_out_of_range",
+                translation_placeholders={
+                    "value": str(airflow),
+                    "minimum": "0",
+                    "maximum": str(max_airflow),
+                },
+            )
 
-        if target_airflow <= self._level_0_max:
-            level = 0
-        elif target_airflow <= self._level_1_max:
-            level = 1
-        elif target_airflow <= self._level_2_max:
-            level = 2
-        else:
-            level = 3
-
-        await self._set_airflow_for_level(level, target_airflow)
+        level = self._select_airflow_level(airflow)
+        await self._set_airflow_for_level(level, airflow)
         await self._async_write_level(str(level))
 
     async def async_set_level(
@@ -302,27 +376,48 @@ class BrinkHomeBaseFanEntity(BrinkHomeDeviceEntity, FanEntity):
             f"ventilation_mode_{level}_airflow"
         )
 
-        if parameter is None or parameter.get("value_id") is None:
+        if (
+            not isinstance(parameter, dict)
+            or not self._is_airflow_writable(parameter)
+            or parameter.get("value_id") is None
+        ):
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="airflow_parameter_unavailable",
                 translation_placeholders={"level": str(level)},
             )
 
-        min_value = int(parameter.get("min_value") or 0)
-        max_value = int(parameter.get("max_value") or airflow)
-
-        airflow = max(
-            min_value,
-            min(airflow, max_value),
-        )
-
-        params = [
-            (
-                int(parameter["value_id"]),
-                str(airflow),
+        limits = self._validated_airflow_bounds(parameter)
+        if limits is None or not limits[0] <= airflow <= limits[1]:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="airflow_parameter_unavailable",
+                translation_placeholders={"level": str(level)},
             )
-        ]
+
+        value_id = parameter["value_id"]
+        if isinstance(value_id, bool) or not isinstance(value_id, (int, str)):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="airflow_parameter_unavailable",
+                translation_placeholders={"level": str(level)},
+            )
+        try:
+            numeric_value_id = int(value_id)
+        except (TypeError, ValueError, OverflowError) as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="airflow_parameter_unavailable",
+                translation_placeholders={"level": str(level)},
+            ) from err
+        if numeric_value_id <= 0:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="airflow_parameter_unavailable",
+                translation_placeholders={"level": str(level)},
+            )
+
+        params = [(numeric_value_id, str(airflow))]
 
         _LOGGER.debug(
             "Writing airflow params: %s",
@@ -629,20 +724,50 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
         """Return current fan percentage."""
         return self._airflow_percentage
 
+    @property
+    def is_on(self) -> bool | None:
+        """Report positive airflow at ventilation level zero as running."""
+        level = self._ventilation_level
+        if level != 0:
+            return super().is_on
+        parameter = self._parameters.get("ventilation_mode_0_airflow")
+        if not isinstance(parameter, dict):
+            return None
+        raw_airflow = parameter.get("value")
+        if isinstance(raw_airflow, bool):
+            return None
+        try:
+            airflow = float(raw_airflow)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        capacity = self._max_airflow
+        if (
+            capacity is None
+            or not math.isfinite(airflow)
+            or not 0 <= airflow <= capacity
+        ):
+            return None
+        return airflow > 0
+
     async def async_set_percentage(self, percentage: int) -> None:
         """Set fan speed percentage."""
-
         max_airflow = self._require_max_airflow()
+        if (
+            isinstance(percentage, bool)
+            or not isinstance(percentage, int)
+            or not 0 <= percentage <= 100
+        ):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="value_out_of_range",
+                translation_placeholders={
+                    "value": str(percentage),
+                    "minimum": "0",
+                    "maximum": "100",
+                },
+            )
         target_airflow = round(percentage / 100 * max_airflow)
-
-        if target_airflow <= 50:
-            level = 0
-        elif target_airflow <= self._level_1_max:
-            level = 1
-        elif target_airflow <= self._level_2_max:
-            level = 2
-        else:
-            level = 3
+        level = self._select_airflow_level(target_airflow)
 
         _LOGGER.debug(
             "Requested percentage=%s target_airflow=%s level=%s",
@@ -657,6 +782,11 @@ class BrinkHomeVentilationFanEntity(BrinkHomeBaseFanEntity):
         )
 
         await self._async_write_level(str(level))
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Zero the level-zero airflow setting when switching this fan off."""
+        await self._set_airflow_for_level(0, 0)
+        await self._async_write_level("0")
 
 
 class BrinkHomeLevelFanEntity(BrinkHomeBaseFanEntity):
@@ -678,7 +808,7 @@ class BrinkHomeLevelFanEntity(BrinkHomeBaseFanEntity):
         )
 
         self._attr_unique_id = (
-            f"{DOMAIN}_{system_id}_{self.parameter_key}_level_fan"
+            f"{DOMAIN}_{system_id}_{self.parameter_key}_fan"
         )
 
     @property
